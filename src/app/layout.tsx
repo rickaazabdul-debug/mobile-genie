@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mobile Genie | Express Phone Repair & Certified Device Store",
+  title: "Mobile Genie | Time Matters — Fix it Fast, Fix it Right!",
   description:
-    "Same-day smartphone screen & battery repair, certified refurbished devices, and premium mobile accessories powered by Mobile Genie.",
+    "Select your phone brand, pick your repair issue, and book a same-day mobile repair appointment with Mobile Genie.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="min-h-full bg-slate-950 text-slate-100 flex flex-col">
+      <body className="min-h-full bg-white text-slate-900 flex flex-col">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   Smartphone,
   BatteryCharging,
@@ -15,7 +16,7 @@ import {
   Search,
   Plus,
   Wrench,
-  Sparkles,
+  Clock,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { AuthModal } from "@/components/AuthModal";
@@ -32,17 +33,17 @@ import {
 function ServiceIcon({ name }: { name: RepairService["iconName"] }) {
   switch (name) {
     case "smartphone":
-      return <Smartphone className="h-5 w-5 text-cyan-400" />;
+      return <Smartphone className="h-5 w-5 text-[#E31E24]" />;
     case "battery":
-      return <BatteryCharging className="h-5 w-5 text-emerald-400" />;
+      return <BatteryCharging className="h-5 w-5 text-emerald-600" />;
     case "plug":
-      return <PlugZap className="h-5 w-5 text-amber-400" />;
+      return <PlugZap className="h-5 w-5 text-amber-600" />;
     case "droplets":
-      return <Droplets className="h-5 w-5 text-sky-400" />;
+      return <Droplets className="h-5 w-5 text-[#1D8FE1]" />;
     case "camera":
-      return <Camera className="h-5 w-5 text-violet-400" />;
+      return <Camera className="h-5 w-5 text-slate-800" />;
     case "shield":
-      return <ShieldCheck className="h-5 w-5 text-indigo-400" />;
+      return <ShieldCheck className="h-5 w-5 text-[#1D8FE1]" />;
   }
 }
 
@@ -97,7 +98,7 @@ export default function HomePage() {
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <Navbar
         cartCount={totalCartItems}
         onOpenCart={() => setCartOpen(true)}
@@ -106,56 +107,72 @@ export default function HomePage() {
       />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/35 via-slate-950 to-slate-950" />
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-sky-100/70 via-white to-red-50/50" />
+        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-semibold text-indigo-300">
-              <Zap className="h-3.5 w-3.5 text-cyan-400" />
-              30-Minute Express Repairs • Certified Device Store
+            <div className="mb-6 flex justify-center">
+              <Image
+                src="/mobile-genie-logo.png"
+                alt="Mobile Genie"
+                width={320}
+                height={116}
+                priority
+                className="h-24 w-auto object-contain sm:h-28"
+              />
+            </div>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-xs font-bold text-[#1D8FE1]">
+              <Zap className="h-3.5 w-3.5 text-[#E31E24]" />
+              17+ Brands Supported • Same-Day Express Repair
             </span>
-            <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-6xl">
-              Your Phone Fixed Fast.{" "}
-              <span className="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                Pure Magic.
-              </span>
+
+            <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+              Time Matters —{" "}
+              <span className="text-[#E31E24]">Fix it Fast,</span>{" "}
+              <span className="text-[#1D8FE1]">Fix it Right!</span>
             </h1>
-            <p className="mt-5 text-base leading-relaxed text-slate-300 sm:text-lg">
-              Mobile Genie is your neighborhood micro-soldering lab and mobile
-              boutique. From shattered OLED screens to certified refurbished
-              flagships, we keep you connected without the wait.
+
+            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
+              Select your smartphone brand, pick the repair issue, and book an
+              express appointment in under 60 seconds. Genuine parts, certified
+              technicians, and lifetime screen warranty.
             </p>
+
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <a
                 href="#book-repair"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:brightness-110"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-500/25 transition hover:bg-[#c8181e]"
               >
                 <Wrench className="h-4 w-4" />
-                Book Express Repair
+                Select Brand &amp; Book Repair
                 <ArrowRight className="h-4 w-4" />
               </a>
               <a
-                href="#shop"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                href="#services"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
               >
-                Browse Phones &amp; Gear
+                <Clock className="h-4 w-4 text-[#1D8FE1]" />
+                View Repair Prices
               </a>
             </div>
           </div>
 
-          <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: "Devices Repaired", value: "15,000+" },
-              { label: "Avg. Turnaround", value: "30 Mins" },
-              { label: "Screen Warranty", value: "Lifetime" },
-              { label: "Customer Rating", value: "4.9 ★" },
+              { label: "Devices Repaired", value: "15,000+", color: "text-[#E31E24]" },
+              { label: "Avg. Turnaround", value: "30 Mins", color: "text-[#1D8FE1]" },
+              { label: "Screen Warranty", value: "Lifetime", color: "text-slate-900" },
+              { label: "Customer Rating", value: "4.9 ★", color: "text-amber-500" },
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 text-center backdrop-blur"
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm"
               >
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="mt-1 text-xs font-medium text-slate-400">
+                <p className={`text-2xl font-extrabold ${stat.color}`}>
+                  {stat.value}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
                   {stat.label}
                 </p>
               </div>
@@ -164,96 +181,106 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Brand Selection & Repair Appointment Flow */}
+      <RepairBookingSection
+        selectedServiceTitle={selectedService}
+        onServiceChange={setSelectedService}
+      />
+
       {/* Repair Services Section */}
       <section
         id="services"
-        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
+        className="border-t border-slate-200 bg-white py-20"
       >
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-              Precision Repair Lab
-            </span>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">
-              Transparent Repair Pricing
-            </h2>
-            <p className="mt-2 max-w-xl text-sm text-slate-400">
-              Select a service to pre-fill your appointment. Free diagnostics on
-              every walk-in or booked repair.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-300">
-            <Award className="h-4 w-4" />
-            OEM-Grade Parts &amp; No-Fix, No-Fee
-          </div>
-        </div>
-
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {REPAIR_SERVICES.map((service) => (
-            <div
-              key={service.id}
-              className="group flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-900/70 p-6 transition hover:border-indigo-500/40 hover:bg-slate-900"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950">
-                    <ServiceIcon name={service.iconName} />
-                  </div>
-                  {service.popular && (
-                    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-300">
-                      Most Popular
-                    </span>
-                  )}
-                </div>
-                <h3 className="mt-4 text-lg font-bold text-white">
-                  {service.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                  {service.description}
-                </p>
-              </div>
-
-              <div className="mt-6 border-t border-white/10 pt-4">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Turnaround: {service.turnaround}</span>
-                  <span className="text-emerald-400">{service.warranty}</span>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-slate-500">From</span>
-                    <p className="text-xl font-bold text-white">
-                      ${service.startingPrice}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleSelectRepair(service.title)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/15 px-3.5 py-2 text-xs font-semibold text-indigo-300 transition hover:bg-indigo-500 hover:text-white"
-                  >
-                    Book This
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1D8FE1]">
+                Precision Repair Lab
+              </span>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+                Common Mobile Repair Issues
+              </h2>
+              <p className="mt-2 max-w-xl text-sm text-slate-600">
+                Click any repair issue below to jump straight to your
+                appointment with that service pre-selected.
+              </p>
             </div>
-          ))}
+            <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700">
+              <Award className="h-4 w-4" />
+              OEM-Grade Parts &amp; No-Fix, No-Fee
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {REPAIR_SERVICES.map((service) => (
+              <div
+                key={service.id}
+                className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition hover:border-[#E31E24]/50 hover:bg-white hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-xs">
+                      <ServiceIcon name={service.iconName} />
+                    </div>
+                    {service.popular && (
+                      <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-[#E31E24]">
+                        Most Popular
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold text-slate-900">
+                    {service.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {service.description}
+                  </p>
+                </div>
+
+                <div className="mt-6 border-t border-slate-200 pt-4">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Turnaround: {service.turnaround}</span>
+                    <span className="font-semibold text-emerald-600">
+                      {service.warranty}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-slate-400">From</span>
+                      <p className="text-xl font-extrabold text-slate-900">
+                        ${service.startingPrice}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleSelectRepair(service.title)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#E31E24]"
+                    >
+                      Book This
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Devices & Accessories Shop */}
       <section
         id="shop"
-        className="border-y border-white/10 bg-slate-900/35 py-20"
+        className="border-t border-slate-200 bg-slate-50 py-20"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#E31E24]">
                 Mobile Genie Storefront
               </span>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
                 Certified Phones &amp; Accessories
               </h2>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-slate-600">
                 50-point inspected unlocked smartphones and fast-charging gear
                 ready for same-day pickup.
               </p>
@@ -261,24 +288,24 @@ export default function HomePage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search iPhone, Pixel, GaN..."
-                  className="w-56 rounded-xl border border-white/10 bg-slate-950 py-2 pl-9 pr-3 text-xs text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
+                  className="w-56 rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:outline-none"
                 />
               </div>
-              <div className="flex rounded-xl border border-white/10 bg-slate-950 p-1">
+              <div className="flex rounded-xl border border-slate-200 bg-white p-1">
                 {(["All", "Smartphones", "Accessories"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setCategory(tab)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                       category === tab
-                        ? "bg-indigo-500 text-white"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-[#E31E24] text-white"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     {tab}
@@ -292,7 +319,7 @@ export default function HomePage() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-950/80 p-5 transition hover:border-cyan-500/40"
+                className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-[#1D8FE1]/50 hover:shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -301,37 +328,37 @@ export default function HomePage() {
                     >
                       {product.condition}
                     </span>
-                    <span className="flex items-center gap-1 text-xs font-medium text-amber-300">
-                      <Star className="h-3.5 w-3.5 fill-amber-300" />
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                       {product.rating}
                     </span>
                   </div>
 
-                  <p className="mt-4 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
                     {product.brand}
                   </p>
-                  <h3 className="mt-1 text-base font-bold text-white">
+                  <h3 className="mt-1 text-base font-bold text-slate-900">
                     {product.name}
                   </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600">
                     {product.specs}
                   </p>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
+                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-white">
+                    <span className="text-xl font-extrabold text-slate-900">
                       ${product.price}
                     </span>
                     {product.originalPrice && (
-                      <span className="text-xs text-slate-500 line-through">
+                      <span className="text-xs text-slate-400 line-through">
                         ${product.originalPrice}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => handleAddToCart(product)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500"
+                    className="inline-flex items-center gap-1 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#E31E24]"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Add
@@ -343,23 +370,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Repair Booking Form */}
-      <RepairBookingSection
-        selectedServiceTitle={selectedService}
-        onServiceChange={setSelectedService}
-      />
-
       {/* Footer */}
-      <footer className="mt-auto border-t border-white/10 bg-slate-950 py-10">
+      <footer className="mt-auto border-t border-slate-200 bg-white py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Sparkles className="h-4 w-4 text-cyan-400" />
-            <span className="font-semibold">Mobile Genie</span>
-            <span>• Express Repair &amp; Certified Devices</span>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/mobile-genie-logo.png"
+              alt="Mobile Genie"
+              width={132}
+              height={48}
+              className="h-9 w-auto object-contain"
+            />
+            <span className="text-slate-600">
+              • Time Matters — Fix it fast, Fix it Right!
+            </span>
           </div>
-          <p>
-            Powered by Next.js &amp; Firebase (2026).
-          </p>
+          <p>Mobile Genie © 2026 • Express Repair &amp; Certified Devices</p>
         </div>
       </footer>
 
