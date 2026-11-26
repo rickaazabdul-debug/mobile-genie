@@ -16,7 +16,6 @@ import {
   Smartphone,
   Wrench,
   CalendarClock,
-  ShieldCheck,
   Truck,
   Store,
   Upload,
@@ -303,8 +302,49 @@ export function RepairBookingSection({
           </Link>
         </div>
 
-        {/* Clickable 4-Step Progress Bar */}
-        <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {/* Mobile: Clean Compact Progress Stepper */}
+        <div className="mt-5 sm:hidden">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-[#E31E24]">
+              Step {currentStep} of 4
+            </span>
+            <span className="text-slate-700">
+              {WIZARD_STEPS[currentStep - 1].label}
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-[#E31E24] transition-all duration-300"
+              style={{ width: `${(currentStep / 4) * 100}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {WIZARD_STEPS.map(({ step, label }) => {
+              const isActive = currentStep === step;
+              const isDone = currentStep > step;
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => goToStep(step)}
+                  className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition ${
+                    isActive
+                      ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                      : isDone
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-400"
+                  }`}
+                >
+                  {isDone ? <Check className="h-3 w-3" /> : <span>{step}.</span>}
+                  <span className="truncate">{label.split(" ")[0]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Desktop: 4-Step Progress Bar */}
+        <div className="mt-6 hidden gap-2.5 sm:grid sm:grid-cols-4">
           {WIZARD_STEPS.map(({ step, label }) => {
             const isActive = currentStep === step;
             const isDone = currentStep > step;
@@ -360,10 +400,7 @@ export function RepairBookingSection({
           {currentStep === 1 && (
             <div>
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E31E24] text-xs font-bold text-white">
-                    1
-                  </span>
+                <div className="hidden items-center gap-2.5 sm:flex">
                   <h3 className="text-lg font-bold text-slate-900">
                     Select Your Phone Brand
                   </h3>
@@ -384,7 +421,7 @@ export function RepairBookingSection({
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
                 {filteredBrands.map((brand) => {
                   const isSelected = selectedBrand.id === brand.id;
                   return (
@@ -392,7 +429,7 @@ export function RepairBookingSection({
                       key={brand.id}
                       type="button"
                       onClick={() => handleSelectBrand(brand)}
-                      className={`group relative flex h-20 flex-col items-center justify-center rounded-2xl border p-3 transition-all ${
+                      className={`group relative flex h-16 flex-col items-center justify-center rounded-2xl border p-2.5 transition-all sm:h-20 sm:p-3 ${
                         isSelected
                           ? "border-[#E31E24] bg-red-50/40 ring-2 ring-[#E31E24]/25 shadow-sm"
                           : "border-slate-200 bg-white hover:border-[#E31E24]/60 hover:shadow-md"
