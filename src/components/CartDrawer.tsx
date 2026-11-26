@@ -5,7 +5,7 @@ import { X, Trash2, ShoppingBag, CheckCircle2, Loader2, AlertCircle } from "luci
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import type { ProductItem } from "@/data/catalog";
+import { formatLkr, type ProductItem } from "@/data/catalog";
 
 export interface CartEntry {
   product: ProductItem;
@@ -128,12 +128,12 @@ export function CartDrawer({
                   <div>
                     <p className="text-sm font-semibold text-white">{product.name}</p>
                     <p className="text-xs text-slate-400">
-                      Qty {quantity} × ${product.price}
+                      Qty {quantity} × {formatLkr(product.price)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-cyan-300">
-                      ${product.price * quantity}
+                      {formatLkr(product.price * quantity)}
                     </span>
                     <button
                       onClick={() => onRemoveItem(product.id)}
@@ -159,7 +159,7 @@ export function CartDrawer({
           <div className="border-t border-white/10 pt-4">
             <div className="mb-4 flex items-center justify-between text-sm">
               <span className="text-slate-400">Subtotal</span>
-              <span className="text-lg font-bold text-white">${subtotal}</span>
+              <span className="text-lg font-bold text-white">{formatLkr(subtotal)}</span>
             </div>
             <button
               onClick={handleCheckout}

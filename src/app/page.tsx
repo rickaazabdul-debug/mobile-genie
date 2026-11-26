@@ -33,6 +33,7 @@ import {
 import {
   PRODUCTS,
   REPAIR_SERVICES,
+  formatLkr,
   type ProductItem,
   type RepairService,
 } from "@/data/catalog";
@@ -256,7 +257,7 @@ export default function HomePage() {
                     <div>
                       <span className="text-xs text-slate-400">From</span>
                       <p className="text-xl font-extrabold text-slate-900">
-                        ${service.startingPrice}
+                        {formatLkr(service.startingPrice)}
                       </p>
                     </div>
                     <button
@@ -356,11 +357,11 @@ export default function HomePage() {
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xl font-extrabold text-slate-900">
-                      ${product.price}
+                      {formatLkr(product.price)}
                     </span>
                     {product.originalPrice && (
                       <span className="text-xs text-slate-400 line-through">
-                        ${product.originalPrice}
+                        {formatLkr(product.originalPrice)}
                       </span>
                     )}
                   </div>

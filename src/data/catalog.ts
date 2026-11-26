@@ -33,6 +33,10 @@ export interface ProductItem {
   badgeColor: string;
 }
 
+export function formatLkr(amount: number): string {
+  return `LKR ${amount.toLocaleString("en-LK")}`;
+}
+
 export const PHONE_BRANDS: PhoneBrand[] = [
   {
     id: "samsung",
@@ -206,7 +210,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Cracked Screen",
     description:
       "Factory-calibrated OLED & LCD display replacements with True Tone and fingerprint sensor preservation.",
-    startingPrice: 79,
+    startingPrice: 14500,
     turnaround: "30–45 mins",
     warranty: "Lifetime Warranty",
     iconName: "smartphone",
@@ -218,7 +222,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Battery Drain",
     description:
       "Zero-cycle OEM-grade battery replacement to restore all-day power and peak performance.",
-    startingPrice: 49,
+    startingPrice: 6500,
     turnaround: "20–30 mins",
     warranty: "1-Year Warranty",
     iconName: "battery",
@@ -230,7 +234,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Charging Port",
     description:
       "Micro-soldered USB-C and Lightning port replacements, plus ultrasonic debris cleaning.",
-    startingPrice: 59,
+    startingPrice: 4500,
     turnaround: "45 mins",
     warranty: "90-Day Warranty",
     iconName: "plug",
@@ -241,7 +245,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Water Damage",
     description:
       "Ultrasonic logic board cleaning, corrosion removal, and emergency data recovery.",
-    startingPrice: 89,
+    startingPrice: 7500,
     turnaround: "Same Day",
     warranty: "90-Day Warranty",
     iconName: "droplets",
@@ -252,7 +256,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Camera / Lens",
     description:
       "Restore crystal-clear focus, OIS stabilization, and cracked rear camera glass.",
-    startingPrice: 69,
+    startingPrice: 5500,
     turnaround: "40 mins",
     warranty: "90-Day Warranty",
     iconName: "camera",
@@ -263,7 +267,7 @@ export const REPAIR_SERVICES: RepairService[] = [
     shortLabel: "Diagnostics / Unlock",
     description:
       "Full 32-point hardware health check, software restoration, and official carrier unlocking.",
-    startingPrice: 29,
+    startingPrice: 2500,
     turnaround: "20 mins",
     warranty: "Service Guarantee",
     iconName: "shield",
@@ -277,7 +281,7 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Apple",
     category: "Smartphones",
     condition: "New",
-    price: 999,
+    price: 329000,
     specs: "6.3\" ProMotion OLED • A18 Pro • Unlocked",
     rating: 4.9,
     badgeColor: "bg-red-50 text-[#E31E24] border-red-200",
@@ -288,7 +292,7 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Samsung",
     category: "Smartphones",
     condition: "New",
-    price: 1149,
+    price: 369000,
     specs: "6.9\" QHD+ AMOLED • S-Pen • 200MP Camera",
     rating: 4.9,
     badgeColor: "bg-sky-50 text-[#1D8FE1] border-sky-200",
@@ -299,8 +303,8 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Apple",
     category: "Smartphones",
     condition: "Certified Refurbished",
-    price: 549,
-    originalPrice: 699,
+    price: 179000,
+    originalPrice: 219000,
     specs: "95%+ Battery Health • 1-Yr Genie Warranty",
     rating: 4.8,
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -311,8 +315,8 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Google",
     category: "Smartphones",
     condition: "Certified Refurbished",
-    price: 679,
-    originalPrice: 899,
+    price: 215000,
+    originalPrice: 265000,
     specs: "Tensor G4 • Triple Pro Camera • Unlocked",
     rating: 4.8,
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -323,8 +327,8 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Mobile Genie",
     category: "Accessories",
     condition: "Accessory",
-    price: 39,
-    originalPrice: 49,
+    price: 9500,
+    originalPrice: 12500,
     specs: "PD 3.0 Fast Charge • Foldable Plug • Braided Cable",
     rating: 4.9,
     badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
@@ -335,7 +339,7 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Mobile Genie",
     category: "Accessories",
     condition: "Accessory",
-    price: 34,
+    price: 7900,
     specs: "10ft Drop Protection • Ultra-Slim • N52 Magnets",
     rating: 4.7,
     badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
@@ -346,7 +350,7 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Mobile Genie",
     category: "Accessories",
     condition: "Accessory",
-    price: 24,
+    price: 4500,
     specs: "Free In-Store Dust-Free Install • Anti-Fingerprint",
     rating: 4.8,
     badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
@@ -357,8 +361,8 @@ export const PRODUCTS: ProductItem[] = [
     brand: "Mobile Genie",
     category: "Accessories",
     condition: "Accessory",
-    price: 89,
-    originalPrice: 119,
+    price: 22500,
+    originalPrice: 29500,
     specs: "42dB Active Noise Canceling • 36h Battery • USB-C",
     rating: 4.8,
     badgeColor: "bg-amber-50 text-amber-700 border-amber-200",

@@ -22,6 +22,7 @@ import {
   APPOINTMENT_TIME_SLOTS,
   PHONE_BRANDS,
   REPAIR_SERVICES,
+  formatLkr,
   type PhoneBrand,
 } from "@/data/catalog";
 
@@ -335,7 +336,7 @@ export function RepairBookingSection({
                           </p>
                         </div>
                         <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-900">
-                          From ${service.startingPrice}
+                          From {formatLkr(service.startingPrice)}
                         </span>
                       </div>
                     </button>
@@ -492,7 +493,7 @@ export function RepairBookingSection({
                           Starting Estimate
                         </dt>
                         <dd className="text-lg font-extrabold text-slate-900">
-                          From ${activeService.startingPrice}
+                          From {formatLkr(activeService.startingPrice)}
                         </dd>
                       </div>
                     </dl>

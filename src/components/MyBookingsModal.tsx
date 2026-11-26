@@ -5,6 +5,7 @@ import { X, Wrench, Package, Loader2, ClipboardList } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { formatLkr } from "@/data/catalog";
 
 interface RepairTicket {
   id: string;
@@ -160,7 +161,7 @@ export function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProps) {
                           {o.items?.map((i) => `${i.quantity}× ${i.name}`).join(", ")}
                         </p>
                         <p className="text-xs text-slate-400">
-                          Order #{o.id.slice(0, 8)} • Total: ${o.totalAmount}
+                          Order #{o.id.slice(0, 8)} • Total: {formatLkr(o.totalAmount)}
                         </p>
                       </div>
                       <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
