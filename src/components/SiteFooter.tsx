@@ -137,6 +137,9 @@ export function SiteFooter() {
             <Link href="/track" className="hover:text-[#1D8FE1]">
               Track Ticket
             </Link>
+            <Link href="/admin" className="hover:text-[#E31E24]">
+              Admin
+            </Link>
             <Link href="/sitemap.xml" className="hover:text-slate-800">
               Sitemap
             </Link>

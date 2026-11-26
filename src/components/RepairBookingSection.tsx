@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import {
   Calendar,
@@ -20,8 +21,6 @@ import {
   Store,
   Upload,
   BellRing,
-  Copy,
-  ExternalLink,
   PackageCheck,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -70,6 +69,7 @@ export function RepairBookingSection({
   selectedServiceTitle,
   onServiceChange,
 }: RepairBookingSectionProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const [brandSearch, setBrandSearch] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<PhoneBrand>(PHONE_BRANDS[0]);
@@ -92,8 +92,6 @@ export function RepairBookingSection({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
-  const [receipt, setReceipt] = useState<ConfirmedReceipt | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resolvedName = customerName ?? user?.displayName ?? "";
@@ -229,12 +227,32 @@ export function RepairBookingSection({
         // ignore storage quota errors
       }
 
-      setReceipt(confirmed);
-      setDeviceModel("");
-      setNotes("");
-      setPickupAddress("");
-      setDamageMediaUrl(null);
-      setDamageMediaName(null);
+      // Fire-and-forget instant booking receipt email via Resend
+      fetch("/api/send-booking-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketCode,
+          customerName: resolvedName.trim(),
+          email: resolvedEmail.trim(),
+          phone: phone.trim(),
+          brand: selectedBrand.name,
+          model: finalModel,
+          issue: serviceType,
+          partTier: selectedTier.name,
+          warranty: selectedTier.warranty,
+          serviceMode: activeMode.label,
+          colomboZone: zoneLabel,
+          date: finalDate,
+          slot: timeSlot,
+          estimatedTotalLkr,
+          trackingUrl: `${window.location.origin}/track?ticket=${encodeURIComponent(
+            ticketCode
+          )}`,
+        }),
+      }).catch(() => {});
+
+      router.push(`/receipt?ticket=${encodeURIComponent(ticketCode)}`);
     } catch (err) {
       const msg =
         err instanceof Error
@@ -244,15 +262,6 @@ export function RepairBookingSection({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleCopyTrackingLink = (ticketCode: string) => {
-    const url = `${window.location.origin}/track?ticket=${encodeURIComponent(
-      ticketCode
-    )}`;
-    navigator.clipboard?.writeText(url);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   return (
@@ -289,97 +298,7 @@ export function RepairBookingSection({
           </Link>
         </div>
 
-        {receipt ? (
-          <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <CheckCircle2 className="h-8 w-8" />
-              </div>
-              <h3 className="mt-4 text-2xl font-extrabold text-slate-900">
-                Instant Booking Receipt — Confirmed!
-              </h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Your unique repair job ID is ready. Use it anytime to track
-                status, reschedule, or cancel.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                <code className="rounded-xl border border-emerald-300 bg-white px-4 py-2 font-mono text-base font-extrabold text-[#E31E24]">
-                  {receipt.ticketCode}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => handleCopyTrackingLink(receipt.ticketCode)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                >
-                  <Copy className="h-3.5 w-3.5 text-[#1D8FE1]" />
-                  {copiedLink ? "Link Copied!" : "Copy Reschedule / Track Link"}
-                </button>
-              </div>
-            </div>
-
-            <div className="mx-auto mt-6 grid max-w-2xl gap-3 rounded-2xl border border-emerald-200 bg-white p-5 text-xs sm:grid-cols-2">
-              <div>
-                <span className="text-slate-400">Brand &amp; Model</span>
-                <p className="font-bold text-slate-900">
-                  {receipt.brand} — {receipt.model}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">Repair Issue</span>
-                <p className="font-bold text-[#E31E24]">{receipt.issue}</p>
-              </div>
-              <div>
-                <span className="text-slate-400">Part Tier &amp; Warranty</span>
-                <p className="font-bold text-slate-900">
-                  {receipt.partTier} ({receipt.warranty})
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">Service Mode &amp; Zone</span>
-                <p className="font-bold text-slate-900">
-                  {receipt.serviceMode} • {receipt.colomboZone}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">Date &amp; Time Slot</span>
-                <p className="font-bold text-[#1D8FE1]">
-                  {receipt.date} • {receipt.slot}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">Estimated Total</span>
-                <p className="text-sm font-extrabold text-slate-900">
-                  From {formatLkr(receipt.estimatedTotalLkr)}
-                </p>
-              </div>
-            </div>
-
-            {receipt.reminderEnabled && (
-              <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-700">
-                <BellRing className="h-3.5 w-3.5" />
-                Automated reminder scheduled 2 hours before your {receipt.slot}{" "}
-                slot.
-              </p>
-            )}
-
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href={`/track?ticket=${encodeURIComponent(receipt.ticketCode)}`}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1D8FE1] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Track / Reschedule Ticket
-              </Link>
-              <button
-                onClick={() => setReceipt(null)}
-                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-              >
-                Book Another Repair
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-10">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-10">
             {error && (
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-[#E31E24]">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -908,8 +827,7 @@ export function RepairBookingSection({
                 </div>
               </div>
             </div>
-          </form>
-        )}
+        </form>
       </div>
     </section>
   );
