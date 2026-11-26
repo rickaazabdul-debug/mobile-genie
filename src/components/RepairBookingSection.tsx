@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -22,6 +22,8 @@ import {
   Upload,
   BellRing,
   PackageCheck,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -46,24 +48,12 @@ interface RepairBookingSectionProps {
   onServiceChange: (serviceTitle: string) => void;
 }
 
-interface ConfirmedReceipt {
-  docId: string;
-  ticketCode: string;
-  brand: string;
-  model: string;
-  issue: string;
-  partTier: string;
-  warranty: string;
-  serviceMode: string;
-  colomboZone: string;
-  pickupAddress: string;
-  date: string;
-  slot: string;
-  estimatedTotalLkr: number;
-  damageMediaUrl: string | null;
-  reminderEnabled: boolean;
-  status: string;
-}
+const WIZARD_STEPS = [
+  { step: 1, label: "Select Brand" },
+  { step: 2, label: "Issue & Model" },
+  { step: 3, label: "Part Tier & Warranty" },
+  { step: 4, label: "Service Mode & Slot" },
+] as const;
 
 export function RepairBookingSection({
   selectedServiceTitle,
@@ -71,12 +61,15 @@ export function RepairBookingSection({
 }: RepairBookingSectionProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const sectionRef = useRef<HTMLElement>(null);
+
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [brandSearch, setBrandSearch] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<PhoneBrand>(PHONE_BRANDS[0]);
   const [deviceModel, setDeviceModel] = useState("");
   const [selectedTier, setSelectedTier] = useState<PartTierOption>(PART_TIERS[1]);
   const [serviceMode, setServiceMode] = useState<ServiceModeId>("walk-in");
-  const [colomboZone, setColomboZone] = useState(COLOMBO_POSTAL_ZONES[3]); // Colombo 04 (Bambalapitiya)
+  const [colomboZone, setColomboZone] = useState(COLOMBO_POSTAL_ZONES[3]);
   const [pickupAddress, setPickupAddress] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [timeSlot, setTimeSlot] = useState(APPOINTMENT_TIME_SLOTS[1]);
@@ -123,9 +116,25 @@ export function RepairBookingSection({
     100;
   const estimatedTotalLkr = estimatedPartPrice + activeMode.feeLkr;
 
+  const goToStep = (step: 1 | 2 | 3 | 4) => {
+    setCurrentStep(step);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const handleSelectBrand = (brand: PhoneBrand) => {
     setSelectedBrand(brand);
     setDeviceModel("");
+    goToStep(2);
+  };
+
+  const handleSelectIssue = (title: string) => {
+    onServiceChange(title);
+    goToStep(3);
+  };
+
+  const handleSelectTier = (tier: PartTierOption) => {
+    setSelectedTier(tier);
+    goToStep(4);
   };
 
   const handleDamageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +188,8 @@ export function RepairBookingSection({
       warranty: selectedTier.warranty,
       serviceMode: activeMode.label,
       colomboZone: zoneLabel,
-      pickupAddress: serviceMode === "walk-in" ? "Shop Drop-Off" : pickupAddress.trim(),
+      pickupAddress:
+        serviceMode === "walk-in" ? "Shop Drop-Off" : pickupAddress.trim(),
       preferredDate: finalDate,
       timeSlot,
       estimatedTotalLkr,
@@ -195,7 +205,7 @@ export function RepairBookingSection({
         createdAt: serverTimestamp(),
       });
 
-      const confirmed: ConfirmedReceipt = {
+      const confirmed = {
         docId: docRef.id,
         ticketCode,
         brand: selectedBrand.name,
@@ -214,7 +224,6 @@ export function RepairBookingSection({
         status: "Appointment Confirmed",
       };
 
-      // Cache locally for instant tracking & offline resilience
       try {
         const existing = JSON.parse(
           localStorage.getItem("mobile_genie_tickets") || "[]"
@@ -227,7 +236,6 @@ export function RepairBookingSection({
         // ignore storage quota errors
       }
 
-      // Fire-and-forget instant booking receipt email via Resend
       fetch("/api/send-booking-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,8 +274,9 @@ export function RepairBookingSection({
 
   return (
     <section
+      ref={sectionRef}
       id="book-repair"
-      className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"
+      className="mx-auto max-w-7xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8"
     >
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-10">
         {/* Header */}
@@ -275,18 +284,14 @@ export function RepairBookingSection({
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24]">
               <CalendarClock className="h-3.5 w-3.5" />
-              Express Repair Appointment &amp; Live Ticket Generator
+              4-Step Express Repair Appointment
             </span>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">
               Select Your Brand &amp; Book Repair
             </h2>
             <p className="mt-1.5 text-sm text-slate-600">
-              Choose your phone brand, part tier &amp; warranty, walk-in or
-              Colombo doorstep pickup, and get a live{" "}
-              <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-bold text-[#E31E24]">
-                REP-XXXX
-              </code>{" "}
-              tracking ticket.
+              Click each step below to choose your brand, repair issue, part
+              tier &amp; warranty, and appointment slot.
             </p>
           </div>
           <Link
@@ -298,15 +303,61 @@ export function RepairBookingSection({
           </Link>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-10">
-            {error && (
-              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-[#E31E24]">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+        {/* Clickable 4-Step Progress Bar */}
+        <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {WIZARD_STEPS.map(({ step, label }) => {
+            const isActive = currentStep === step;
+            const isDone = currentStep > step;
+            return (
+              <button
+                key={step}
+                type="button"
+                onClick={() => goToStep(step)}
+                className={`flex items-center gap-2.5 rounded-2xl border px-3.5 py-3 text-left transition ${
+                  isActive
+                    ? "border-[#E31E24] bg-red-50/60 ring-2 ring-[#E31E24]/20"
+                    : isDone
+                    ? "border-emerald-200 bg-emerald-50/50 hover:border-emerald-300"
+                    : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                }`}
+              >
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    isActive
+                      ? "bg-[#E31E24] text-white"
+                      : isDone
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {isDone ? <Check className="h-3.5 w-3.5" /> : step}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-extrabold text-slate-900">
+                    {label}
+                  </p>
+                  <p className="truncate text-[11px] text-slate-500">
+                    {step === 1 && selectedBrand.name}
+                    {step === 2 && (deviceModel.trim() || activeService.shortLabel)}
+                    {step === 3 && selectedTier.badge}
+                    {step === 4 && `${timeSlot}`}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-            {/* STEP 1: SELECT BRAND */}
+        <form onSubmit={handleSubmit} className="mt-8">
+          {error && (
+            <div className="mb-6 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-[#E31E24]">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* STEP 1: SELECT BRAND */}
+          {currentStep === 1 && (
             <div>
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2.5">
@@ -344,7 +395,7 @@ export function RepairBookingSection({
                       className={`group relative flex h-20 flex-col items-center justify-center rounded-2xl border p-3 transition-all ${
                         isSelected
                           ? "border-[#E31E24] bg-red-50/40 ring-2 ring-[#E31E24]/25 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                          : "border-slate-200 bg-white hover:border-[#E31E24]/60 hover:shadow-md"
                       }`}
                     >
                       {isSelected && (
@@ -362,10 +413,23 @@ export function RepairBookingSection({
                   );
                 })}
               </div>
-            </div>
 
-            {/* STEP 2: REPAIR ISSUE, MODEL, PART TIER & DAMAGE PHOTO */}
-            <div className="border-t border-slate-200 pt-8">
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => goToStep(2)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#c8181e]"
+                >
+                  Next: Issue &amp; {selectedBrand.name} Model
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: ISSUE & MODEL */}
+          {currentStep === 2 && (
+            <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D8FE1] text-xs font-bold text-white">
@@ -376,7 +440,6 @@ export function RepairBookingSection({
                   </h3>
                 </div>
 
-                {/* Live Parts Availability Badge */}
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${partsAvailability.badgeClass}`}
                 >
@@ -415,7 +478,6 @@ export function RepairBookingSection({
                 </div>
                 <input
                   type="text"
-                  required
                   value={deviceModel}
                   onChange={(e) => setDeviceModel(e.target.value)}
                   placeholder={`Type your ${selectedBrand.name} model (e.g. ${selectedBrand.popularModels[0]})`}
@@ -424,18 +486,21 @@ export function RepairBookingSection({
               </div>
 
               {/* Repair Issue Cards */}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <p className="mt-5 text-xs font-bold uppercase tracking-wider text-slate-600">
+                Click a Repair Issue to Continue
+              </p>
+              <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {REPAIR_SERVICES.map((service) => {
                   const isSelected = serviceType === service.title;
                   return (
                     <button
                       key={service.id}
                       type="button"
-                      onClick={() => onServiceChange(service.title)}
+                      onClick={() => handleSelectIssue(service.title)}
                       className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition-all ${
                         isSelected
                           ? "border-[#E31E24] bg-red-50/40 ring-2 ring-[#E31E24]/20"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          : "border-slate-200 bg-white hover:border-[#E31E24]/60 hover:shadow-sm"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -456,52 +521,83 @@ export function RepairBookingSection({
                 })}
               </div>
 
-              {/* Transparent Part Tiers & Warranty Badges */}
-              <div className="mt-6">
-                <label className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
-                  <ShieldCheck className="h-4 w-4 text-[#E31E24]" />
-                  Choose Part Quality Tier &amp; Warranty
-                </label>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {PART_TIERS.map((tier) => {
-                    const isSelected = selectedTier.id === tier.id;
-                    const tierPrice =
-                      Math.round(
-                        (activeService.startingPrice * tier.multiplier) / 100
-                      ) * 100;
-                    return (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        onClick={() => setSelectedTier(tier)}
-                        className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition ${
-                          isSelected
-                            ? "border-[#E31E24] bg-red-50/30 ring-2 ring-[#E31E24]/20"
-                            : "border-slate-200 bg-white hover:border-slate-300"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-bold text-slate-900">
-                              {tier.name}
-                            </span>
-                            <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${tier.badgeClass}`}
-                            >
-                              {tier.badge}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-xs text-slate-600">
-                            {tier.description}
-                          </p>
-                        </div>
-                        <p className="mt-3 text-sm font-extrabold text-slate-900">
-                          Est. {formatLkr(tierPrice)}
-                        </p>
-                      </button>
-                    );
-                  })}
+              <div className="mt-6 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => goToStep(1)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Brand
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToStep(3)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1D8FE1] px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+                >
+                  Next: Choose Part Quality Tier &amp; Warranty
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: CHOOSE PART QUALITY TIER & WARRANTY */}
+          {currentStep === 3 && (
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E31E24] text-xs font-bold text-white">
+                    3
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Choose Part Quality Tier &amp; Warranty
+                  </h3>
                 </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  {selectedBrand.name} • {activeService.title}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {PART_TIERS.map((tier) => {
+                  const isSelected = selectedTier.id === tier.id;
+                  const tierPrice =
+                    Math.round(
+                      (activeService.startingPrice * tier.multiplier) / 100
+                    ) * 100;
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      onClick={() => handleSelectTier(tier)}
+                      className={`flex flex-col justify-between rounded-2xl border p-5 text-left transition ${
+                        isSelected
+                          ? "border-[#E31E24] bg-red-50/30 ring-2 ring-[#E31E24]/20"
+                          : "border-slate-200 bg-white hover:border-[#E31E24]/60 hover:shadow-sm"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold text-slate-900">
+                            {tier.name}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${tier.badgeClass}`}
+                          >
+                            {tier.badge}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-600">
+                          {tier.description}
+                        </p>
+                      </div>
+                      <p className="mt-4 text-base font-extrabold text-slate-900">
+                        Est. {formatLkr(tierPrice)}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Damage Photo / Clip Upload (Vercel Blob) */}
@@ -551,20 +647,40 @@ export function RepairBookingSection({
                   </p>
                 )}
               </div>
-            </div>
 
-            {/* STEP 3: SERVICE MODE (WALK-IN VS PICKUP/DOORSTEP), SLOT & DETAILS */}
-            <div className="border-t border-slate-200 pt-8">
+              <div className="mt-6 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => goToStep(2)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Issue &amp; Model
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToStep(4)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#c8181e]"
+                >
+                  Next: Service Mode, Colombo Zone &amp; Time Slot
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: SERVICE MODE, COLOMBO ZONE & TIME SLOT */}
+          {currentStep === 4 && (
+            <div>
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
-                  3
+                  4
                 </span>
                 <h3 className="text-lg font-bold text-slate-900">
                   Service Mode, Colombo Zone &amp; Time Slot
                 </h3>
               </div>
 
-              {/* Service Mode Selector */}
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 {SERVICE_MODES.map((mode) => {
                   const isSelected = serviceMode === mode.id;
@@ -761,8 +877,8 @@ export function RepairBookingSection({
                       <div className="flex justify-between">
                         <dt className="text-slate-500">Brand &amp; Model</dt>
                         <dd className="font-bold text-slate-900">
-                          {selectedBrand.name}{" "}
-                          {deviceModel.trim() ? `• ${deviceModel.trim()}` : ""}
+                          {selectedBrand.name} •{" "}
+                          {deviceModel.trim() || selectedBrand.popularModels[0]}
                         </dd>
                       </div>
                       <div className="flex justify-between gap-2">
@@ -826,7 +942,19 @@ export function RepairBookingSection({
                   </div>
                 </div>
               </div>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => goToStep(3)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Part Quality Tier &amp; Warranty
+                </button>
+              </div>
             </div>
+          )}
         </form>
       </div>
     </section>
