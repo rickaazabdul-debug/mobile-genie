@@ -134,6 +134,9 @@ export function SiteFooter() {
             Mobile Genie © 2026 • Time Matters — Fix it fast, Fix it Right!
           </p>
           <div className="flex gap-4">
+            <Link href="/track" className="hover:text-[#1D8FE1]">
+              Track Ticket
+            </Link>
             <Link href="/sitemap.xml" className="hover:text-slate-800">
               Sitemap
             </Link>

@@ -9,6 +9,7 @@ import { formatLkr } from "@/data/catalog";
 
 interface RepairTicket {
   id: string;
+  ticketCode?: string;
   deviceModel: string;
   serviceType: string;
   preferredDate: string;
@@ -128,7 +129,7 @@ export function MyBookingsModal({ isOpen, onClose }: MyBookingsModalProps) {
                           {t.deviceModel} — {t.serviceType}
                         </p>
                         <p className="text-xs text-slate-400">
-                          Ticket #{t.id.slice(0, 8)} • Preferred: {t.preferredDate}
+                          Ticket #{t.ticketCode || t.id.slice(0, 8)} • Preferred: {t.preferredDate}
                         </p>
                       </div>
                       <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300">

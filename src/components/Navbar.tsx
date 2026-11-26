@@ -72,6 +72,12 @@ export function Navbar({
           >
             Price Guide
           </Link>
+          <Link
+            href="/track"
+            className="transition-colors hover:text-[#1D8FE1]"
+          >
+            Track Ticket
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2.5">

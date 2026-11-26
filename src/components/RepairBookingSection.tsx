@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import {
   Calendar,
   CheckCircle2,
   Loader2,
   MapPin,
-  Clock,
   Phone,
   AlertCircle,
   Search,
@@ -15,20 +15,55 @@ import {
   Smartphone,
   Wrench,
   CalendarClock,
+  ShieldCheck,
+  Truck,
+  Store,
+  Upload,
+  BellRing,
+  Copy,
+  ExternalLink,
+  PackageCheck,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import {
   APPOINTMENT_TIME_SLOTS,
+  COLOMBO_POSTAL_ZONES,
+  PART_TIERS,
   PHONE_BRANDS,
   REPAIR_SERVICES,
+  SERVICE_MODES,
+  SLOT_STATUS,
   formatLkr,
+  generateTicketCode,
+  getPartsAvailability,
+  type PartTierOption,
   type PhoneBrand,
+  type ServiceModeId,
 } from "@/data/catalog";
 
 interface RepairBookingSectionProps {
   selectedServiceTitle: string;
   onServiceChange: (serviceTitle: string) => void;
+}
+
+interface ConfirmedReceipt {
+  docId: string;
+  ticketCode: string;
+  brand: string;
+  model: string;
+  issue: string;
+  partTier: string;
+  warranty: string;
+  serviceMode: string;
+  colomboZone: string;
+  pickupAddress: string;
+  date: string;
+  slot: string;
+  estimatedTotalLkr: number;
+  damageMediaUrl: string | null;
+  reminderEnabled: boolean;
+  status: string;
 }
 
 export function RepairBookingSection({
@@ -39,21 +74,26 @@ export function RepairBookingSection({
   const [brandSearch, setBrandSearch] = useState("");
   const [selectedBrand, setSelectedBrand] = useState<PhoneBrand>(PHONE_BRANDS[0]);
   const [deviceModel, setDeviceModel] = useState("");
+  const [selectedTier, setSelectedTier] = useState<PartTierOption>(PART_TIERS[1]);
+  const [serviceMode, setServiceMode] = useState<ServiceModeId>("walk-in");
+  const [colomboZone, setColomboZone] = useState(COLOMBO_POSTAL_ZONES[3]); // Colombo 04 (Bambalapitiya)
+  const [pickupAddress, setPickupAddress] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [timeSlot, setTimeSlot] = useState(APPOINTMENT_TIME_SLOTS[1]);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [damageMediaUrl, setDamageMediaUrl] = useState<string | null>(null);
+  const [damageMediaName, setDamageMediaName] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
-  const [ticketInfo, setTicketInfo] = useState<{
-    id: string;
-    brand: string;
-    model: string;
-    issue: string;
-    date: string;
-    slot: string;
-  } | null>(null);
+  const [receipt, setReceipt] = useState<ConfirmedReceipt | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resolvedName = customerName ?? user?.displayName ?? "";
@@ -72,10 +112,49 @@ export function RepairBookingSection({
 
   const activeService =
     REPAIR_SERVICES.find((s) => s.title === serviceType) || REPAIR_SERVICES[0];
+  const activeMode =
+    SERVICE_MODES.find((m) => m.id === serviceMode) || SERVICE_MODES[0];
+
+  const partsAvailability = getPartsAvailability(
+    selectedBrand.id,
+    selectedTier.id
+  );
+
+  const estimatedPartPrice =
+    Math.round((activeService.startingPrice * selectedTier.multiplier) / 100) *
+    100;
+  const estimatedTotalLkr = estimatedPartPrice + activeMode.feeLkr;
 
   const handleSelectBrand = (brand: PhoneBrand) => {
     setSelectedBrand(brand);
     setDeviceModel("");
+  };
+
+  const handleDamageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    setUploadingMedia(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload-damage", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+      setDamageMediaUrl(data.url);
+      setDamageMediaName(data.filename);
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : "Unable to upload file."
+      );
+    } finally {
+      setUploadingMedia(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,33 +163,78 @@ export function RepairBookingSection({
     setSubmitting(true);
 
     const finalModel = deviceModel.trim() || selectedBrand.popularModels[0];
-    const finalDate = preferredDate || "Today / Walk-in";
+    const finalDate = preferredDate || "Today / Next Available";
+    const ticketCode = generateTicketCode();
+    const zoneLabel =
+      serviceMode === "walk-in" ? "Colombo 04 (Bambalapitiya Lab)" : colomboZone;
+
+    const payload = {
+      userId: user?.uid ?? null,
+      ticketCode,
+      customerName: resolvedName.trim(),
+      email: resolvedEmail.trim(),
+      phone: phone.trim(),
+      brand: selectedBrand.name,
+      deviceModel: finalModel,
+      serviceType,
+      partTier: selectedTier.name,
+      warranty: selectedTier.warranty,
+      serviceMode: activeMode.label,
+      colomboZone: zoneLabel,
+      pickupAddress: serviceMode === "walk-in" ? "Shop Drop-Off" : pickupAddress.trim(),
+      preferredDate: finalDate,
+      timeSlot,
+      estimatedTotalLkr,
+      damageMediaUrl,
+      reminderEnabled,
+      notes: notes.trim(),
+      status: "Appointment Confirmed",
+    };
 
     try {
       const docRef = await addDoc(collection(db, "repair_bookings"), {
-        userId: user?.uid ?? null,
-        customerName: resolvedName.trim(),
-        email: resolvedEmail.trim(),
-        phone: phone.trim(),
-        brand: selectedBrand.name,
-        deviceModel: finalModel,
-        serviceType,
-        preferredDate: finalDate,
-        timeSlot,
-        notes: notes.trim(),
-        status: "Appointment Confirmed",
+        ...payload,
         createdAt: serverTimestamp(),
       });
-      setTicketInfo({
-        id: docRef.id,
+
+      const confirmed: ConfirmedReceipt = {
+        docId: docRef.id,
+        ticketCode,
         brand: selectedBrand.name,
         model: finalModel,
         issue: serviceType,
+        partTier: selectedTier.name,
+        warranty: selectedTier.warranty,
+        serviceMode: activeMode.label,
+        colomboZone: zoneLabel,
+        pickupAddress: payload.pickupAddress,
         date: finalDate,
         slot: timeSlot,
-      });
+        estimatedTotalLkr,
+        damageMediaUrl,
+        reminderEnabled,
+        status: "Appointment Confirmed",
+      };
+
+      // Cache locally for instant tracking & offline resilience
+      try {
+        const existing = JSON.parse(
+          localStorage.getItem("mobile_genie_tickets") || "[]"
+        );
+        localStorage.setItem(
+          "mobile_genie_tickets",
+          JSON.stringify([confirmed, ...existing].slice(0, 20))
+        );
+      } catch {
+        // ignore storage quota errors
+      }
+
+      setReceipt(confirmed);
       setDeviceModel("");
       setNotes("");
+      setPickupAddress("");
+      setDamageMediaUrl(null);
+      setDamageMediaName(null);
     } catch (err) {
       const msg =
         err instanceof Error
@@ -120,6 +244,15 @@ export function RepairBookingSection({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCopyTrackingLink = (ticketCode: string) => {
+    const url = `${window.location.origin}/track?ticket=${encodeURIComponent(
+      ticketCode
+    )}`;
+    navigator.clipboard?.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   return (
@@ -133,71 +266,117 @@ export function RepairBookingSection({
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24]">
               <CalendarClock className="h-3.5 w-3.5" />
-              3-Step Express Repair Appointment
+              Express Repair Appointment &amp; Live Ticket Generator
             </span>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">
               Select Your Brand &amp; Book Repair
             </h2>
             <p className="mt-1.5 text-sm text-slate-600">
-              Time Matters — Fix it fast, Fix it Right! Choose your phone brand,
-              pick the issue, and reserve your slot.
+              Choose your phone brand, part tier &amp; warranty, walk-in or
+              Colombo doorstep pickup, and get a live{" "}
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-bold text-[#E31E24]">
+                REP-XXXX
+              </code>{" "}
+              tracking ticket.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-600">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-sky-50 px-3 py-2 text-[#1D8FE1]">
-              <Clock className="h-3.5 w-3.5" />
-              30-Min Express Service
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-slate-700">
-              <MapPin className="h-3.5 w-3.5 text-[#E31E24]" />
-              Walk-ins &amp; Appointments
-            </span>
-          </div>
+          <Link
+            href="/track"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-bold text-[#1D8FE1] transition hover:bg-sky-100"
+          >
+            <PackageCheck className="h-4 w-4" />
+            Track Existing Ticket
+          </Link>
         </div>
 
-        {ticketInfo ? (
-          <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50/70 p-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-              <CheckCircle2 className="h-8 w-8" />
+        {receipt ? (
+          <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="mt-4 text-2xl font-extrabold text-slate-900">
+                Instant Booking Receipt — Confirmed!
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Your unique repair job ID is ready. Use it anytime to track
+                status, reschedule, or cancel.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <code className="rounded-xl border border-emerald-300 bg-white px-4 py-2 font-mono text-base font-extrabold text-[#E31E24]">
+                  {receipt.ticketCode}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => handleCopyTrackingLink(receipt.ticketCode)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <Copy className="h-3.5 w-3.5 text-[#1D8FE1]" />
+                  {copiedLink ? "Link Copied!" : "Copy Reschedule / Track Link"}
+                </button>
+              </div>
             </div>
-            <h3 className="mt-4 text-2xl font-extrabold text-slate-900">
-              Mobile Repair Appointment Confirmed!
-            </h3>
-            <p className="mt-1.5 text-sm text-slate-600">
-              We&apos;ve reserved your repair slot. Show this ticket ID at the
-              Mobile Genie counter.
-            </p>
-            <code className="mt-3 rounded-lg border border-emerald-200 bg-white px-4 py-1.5 font-mono text-sm font-bold text-emerald-700">
-              {ticketInfo.id}
-            </code>
 
-            <div className="mt-6 grid w-full max-w-xl gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left text-xs sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid max-w-2xl gap-3 rounded-2xl border border-emerald-200 bg-white p-5 text-xs sm:grid-cols-2">
               <div>
                 <span className="text-slate-400">Brand &amp; Model</span>
                 <p className="font-bold text-slate-900">
-                  {ticketInfo.brand} — {ticketInfo.model}
+                  {receipt.brand} — {receipt.model}
                 </p>
               </div>
               <div>
                 <span className="text-slate-400">Repair Issue</span>
-                <p className="font-bold text-[#E31E24]">{ticketInfo.issue}</p>
+                <p className="font-bold text-[#E31E24]">{receipt.issue}</p>
               </div>
               <div>
-                <span className="text-slate-400">Appointment Date</span>
-                <p className="font-bold text-slate-900">{ticketInfo.date}</p>
+                <span className="text-slate-400">Part Tier &amp; Warranty</span>
+                <p className="font-bold text-slate-900">
+                  {receipt.partTier} ({receipt.warranty})
+                </p>
               </div>
               <div>
-                <span className="text-slate-400">Time Slot</span>
-                <p className="font-bold text-[#1D8FE1]">{ticketInfo.slot}</p>
+                <span className="text-slate-400">Service Mode &amp; Zone</span>
+                <p className="font-bold text-slate-900">
+                  {receipt.serviceMode} • {receipt.colomboZone}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-400">Date &amp; Time Slot</span>
+                <p className="font-bold text-[#1D8FE1]">
+                  {receipt.date} • {receipt.slot}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-400">Estimated Total</span>
+                <p className="text-sm font-extrabold text-slate-900">
+                  From {formatLkr(receipt.estimatedTotalLkr)}
+                </p>
               </div>
             </div>
 
-            <button
-              onClick={() => setTicketInfo(null)}
-              className="mt-6 rounded-xl bg-[#E31E24] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#c8181e]"
-            >
-              Book Another Repair
-            </button>
+            {receipt.reminderEnabled && (
+              <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <BellRing className="h-3.5 w-3.5" />
+                Automated reminder scheduled 2 hours before your {receipt.slot}{" "}
+                slot.
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href={`/track?ticket=${encodeURIComponent(receipt.ticketCode)}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1D8FE1] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Track / Reschedule Ticket
+              </Link>
+              <button
+                onClick={() => setReceipt(null)}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+              >
+                Book Another Repair
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-10">
@@ -266,16 +445,30 @@ export function RepairBookingSection({
               </div>
             </div>
 
-            {/* STEP 2: SELECT REPAIR ISSUE & MODEL */}
+            {/* STEP 2: REPAIR ISSUE, MODEL, PART TIER & DAMAGE PHOTO */}
             <div className="border-t border-slate-200 pt-8">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D8FE1] text-xs font-bold text-white">
-                  2
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D8FE1] text-xs font-bold text-white">
+                    2
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Issue, Part Tier &amp; {selectedBrand.name} Model
+                  </h3>
+                </div>
+
+                {/* Live Parts Availability Badge */}
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${partsAvailability.badgeClass}`}
+                >
+                  <PackageCheck className="h-3.5 w-3.5" />
+                  Parts: {partsAvailability.status}
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Select Repair Issue &amp; {selectedBrand.name} Model
-                </h3>
               </div>
+
+              <p className="mt-1.5 text-xs text-slate-500">
+                {partsAvailability.note}
+              </p>
 
               {/* Popular models quick-pick */}
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -343,20 +536,189 @@ export function RepairBookingSection({
                   );
                 })}
               </div>
+
+              {/* Transparent Part Tiers & Warranty Badges */}
+              <div className="mt-6">
+                <label className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <ShieldCheck className="h-4 w-4 text-[#E31E24]" />
+                  Choose Part Quality Tier &amp; Warranty
+                </label>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {PART_TIERS.map((tier) => {
+                    const isSelected = selectedTier.id === tier.id;
+                    const tierPrice =
+                      Math.round(
+                        (activeService.startingPrice * tier.multiplier) / 100
+                      ) * 100;
+                    return (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => setSelectedTier(tier)}
+                        className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition ${
+                          isSelected
+                            ? "border-[#E31E24] bg-red-50/30 ring-2 ring-[#E31E24]/20"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-slate-900">
+                              {tier.name}
+                            </span>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${tier.badgeClass}`}
+                            >
+                              {tier.badge}
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-xs text-slate-600">
+                            {tier.description}
+                          </p>
+                        </div>
+                        <p className="mt-3 text-sm font-extrabold text-slate-900">
+                          Est. {formatLkr(tierPrice)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Damage Photo / Clip Upload (Vercel Blob) */}
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                      <Upload className="h-4 w-4 text-[#1D8FE1]" />
+                      Upload Photo or Short Clip of Damage (Optional)
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      Share screen green lines, water exposure, or frame dents
+                      so our technician prepares the exact part before you
+                      arrive (max 15MB).
+                    </p>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-800 transition hover:border-[#1D8FE1] hover:text-[#1D8FE1]">
+                    {uploadingMedia ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5" />
+                        {damageMediaUrl ? "Replace Photo/Clip" : "Choose File"}
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={handleDamageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {damageMediaUrl && (
+                  <p className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Attached: {damageMediaName || "Damage media"}
+                  </p>
+                )}
+                {uploadError && (
+                  <p className="mt-2 text-xs font-medium text-[#E31E24]">
+                    {uploadError}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* STEP 3: APPOINTMENT DATE, TIME & DETAILS */}
+            {/* STEP 3: SERVICE MODE (WALK-IN VS PICKUP/DOORSTEP), SLOT & DETAILS */}
             <div className="border-t border-slate-200 pt-8">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
                   3
                 </span>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Choose Appointment Date &amp; Time Slot
+                  Service Mode, Colombo Zone &amp; Time Slot
                 </h3>
               </div>
 
-              <div className="mt-4 grid gap-6 lg:grid-cols-5">
+              {/* Service Mode Selector */}
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {SERVICE_MODES.map((mode) => {
+                  const isSelected = serviceMode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setServiceMode(mode.id)}
+                      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
+                        isSelected
+                          ? "border-[#1D8FE1] bg-sky-50/60 ring-2 ring-[#1D8FE1]/20"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      {mode.id === "walk-in" ? (
+                        <Store className="mt-0.5 h-5 w-5 shrink-0 text-[#E31E24]" />
+                      ) : (
+                        <Truck className="mt-0.5 h-5 w-5 shrink-0 text-[#1D8FE1]" />
+                      )}
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">
+                          {mode.label}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {mode.sublabel}
+                        </p>
+                        <p className="mt-1.5 text-xs font-extrabold text-[#E31E24]">
+                          {mode.feeLkr === 0
+                            ? "Free"
+                            : `+ ${formatLkr(mode.feeLkr)}`}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {serviceMode !== "walk-in" && (
+                <div className="mt-4 grid gap-4 rounded-2xl border border-sky-200 bg-sky-50/40 p-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                      <MapPin className="h-3.5 w-3.5 text-[#E31E24]" />
+                      Colombo Postal Code / Suburb *
+                    </label>
+                    <select
+                      value={colomboZone}
+                      onChange={(e) => setColomboZone(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-[#1D8FE1] focus:outline-none"
+                    >
+                      {COLOMBO_POSTAL_ZONES.map((z) => (
+                        <option key={z} value={z}>
+                          {z}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                      Pickup / Visit Street Address *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={pickupAddress}
+                      onChange={(e) => setPickupAddress(e.target.value)}
+                      placeholder="No. 45, Galle Road, Colombo 04"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1D8FE1] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 grid gap-6 lg:grid-cols-5">
                 <div className="space-y-4 lg:col-span-3">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -368,7 +730,7 @@ export function RepairBookingSection({
                         required
                         value={resolvedName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Alex Morgan"
+                        placeholder="Kasun Perera"
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
                       />
                     </div>
@@ -381,7 +743,7 @@ export function RepairBookingSection({
                         required
                         value={resolvedEmail}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="alex@example.com"
+                        placeholder="kasun@example.lk"
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
                       />
                     </div>
@@ -390,14 +752,14 @@ export function RepairBookingSection({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                        Phone Number *
+                        Mobile / WhatsApp Number *
                       </label>
                       <input
                         type="tel"
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="(555) 234-9870"
+                        placeholder="077 234 9870"
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
                       />
                     </div>
@@ -416,23 +778,31 @@ export function RepairBookingSection({
 
                   <div>
                     <label className="mb-2 block text-xs font-semibold text-slate-700">
-                      Preferred Time Slot
+                      Smart Time Slot Availability
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {APPOINTMENT_TIME_SLOTS.map((slot) => (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => setTimeSlot(slot)}
-                          className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                            timeSlot === slot
-                              ? "border-[#1D8FE1] bg-[#1D8FE1] text-white shadow-sm"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          {slot}
-                        </button>
-                      ))}
+                      {APPOINTMENT_TIME_SLOTS.map((slot) => {
+                        const info = SLOT_STATUS[slot];
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => setTimeSlot(slot)}
+                            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                              timeSlot === slot
+                                ? "border-[#1D8FE1] bg-[#1D8FE1] text-white shadow-sm"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                            }`}
+                          >
+                            <span>{slot}</span>
+                            {info?.urgent && timeSlot !== slot && (
+                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                {info.label}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -444,10 +814,21 @@ export function RepairBookingSection({
                       rows={2}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Describe any extra symptoms (e.g. touch unresponsive, bent frame, won't power on)..."
+                      placeholder="Describe any extra symptoms (e.g. touch unresponsive, bent frame, green line)..."
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
                     />
                   </div>
+
+                  <label className="flex cursor-pointer items-center gap-2.5 text-xs font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={reminderEnabled}
+                      onChange={(e) => setReminderEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#E31E24] focus:ring-[#E31E24]"
+                    />
+                    <BellRing className="h-3.5 w-3.5 text-[#1D8FE1]" />
+                    Send instant booking receipt &amp; 2-hour pre-slot reminder
+                  </label>
                 </div>
 
                 {/* Live Summary Card */}
@@ -457,17 +838,12 @@ export function RepairBookingSection({
                       <Wrench className="h-4 w-4" />
                       Appointment Summary
                     </div>
-                    <dl className="mt-4 space-y-3 border-t border-slate-200 pt-4 text-sm">
+                    <dl className="mt-4 space-y-2.5 border-t border-slate-200 pt-4 text-xs sm:text-sm">
                       <div className="flex justify-between">
-                        <dt className="text-slate-500">Brand</dt>
+                        <dt className="text-slate-500">Brand &amp; Model</dt>
                         <dd className="font-bold text-slate-900">
-                          {selectedBrand.name}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-slate-500">Model</dt>
-                        <dd className="font-semibold text-slate-900">
-                          {deviceModel.trim() || "Not entered yet"}
+                          {selectedBrand.name}{" "}
+                          {deviceModel.trim() ? `• ${deviceModel.trim()}` : ""}
                         </dd>
                       </div>
                       <div className="flex justify-between gap-2">
@@ -477,9 +853,21 @@ export function RepairBookingSection({
                         </dd>
                       </div>
                       <div className="flex justify-between">
-                        <dt className="text-slate-500">Est. Time</dt>
+                        <dt className="text-slate-500">Part Tier</dt>
                         <dd className="font-semibold text-slate-900">
-                          {activeService.turnaround}
+                          {selectedTier.name}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-slate-500">Warranty</dt>
+                        <dd className="font-semibold text-emerald-700">
+                          {selectedTier.badge}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-slate-500">Service Mode</dt>
+                        <dd className="text-right font-semibold text-slate-900">
+                          {activeMode.label}
                         </dd>
                       </div>
                       <div className="flex justify-between">
@@ -490,10 +878,10 @@ export function RepairBookingSection({
                       </div>
                       <div className="flex justify-between border-t border-slate-200 pt-3">
                         <dt className="font-semibold text-slate-700">
-                          Starting Estimate
+                          Estimated Total
                         </dt>
                         <dd className="text-lg font-extrabold text-slate-900">
-                          From {formatLkr(activeService.startingPrice)}
+                          From {formatLkr(estimatedTotalLkr)}
                         </dd>
                       </div>
                     </dl>
@@ -510,11 +898,11 @@ export function RepairBookingSection({
                       ) : (
                         <Calendar className="h-4 w-4" />
                       )}
-                      Confirm Repair Appointment
+                      Confirm &amp; Generate Ticket ID
                     </button>
                     <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
                       <Phone className="h-3 w-3 text-[#1D8FE1]" />
-                      Need help? Call (555) 234-9870
+                      Need help? Call +94 11 234 9870
                     </p>
                   </div>
                 </div>

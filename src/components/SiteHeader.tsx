@@ -31,6 +31,9 @@ export function SiteHeader() {
           <Link href="/guides" className="transition-colors hover:text-[#E31E24]">
             Price Guide &amp; FAQ
           </Link>
+          <Link href="/track" className="transition-colors hover:text-[#1D8FE1]">
+            Track Ticket
+          </Link>
         </nav>
 
         <Link

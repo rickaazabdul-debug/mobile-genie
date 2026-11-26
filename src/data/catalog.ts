@@ -203,6 +203,154 @@ export const APPOINTMENT_TIME_SLOTS = [
   "06:30 PM",
 ];
 
+export interface PartTierOption {
+  id: "original" | "oem" | "economy";
+  name: string;
+  badge: string;
+  warranty: string;
+  multiplier: number;
+  description: string;
+  badgeClass: string;
+}
+
+export const PART_TIERS: PartTierOption[] = [
+  {
+    id: "original",
+    name: "Original / Service Pack",
+    badge: "1-Year Warranty",
+    warranty: "1-Year Official Parts Warranty",
+    multiplier: 1.45,
+    description:
+      "Factory-grade brightness, 120Hz support, True Tone & lowest battery draw.",
+    badgeClass: "bg-red-50 text-[#E31E24] border-red-200",
+  },
+  {
+    id: "oem",
+    name: "OEM Pulled / Soft-OLED",
+    badge: "6-Month Warranty",
+    warranty: "6-Month Mobile Genie Warranty",
+    multiplier: 1.0,
+    description:
+      "Flexible OLED/OEM quality with balanced pricing and full touch accuracy.",
+    badgeClass: "bg-sky-50 text-[#1D8FE1] border-sky-200",
+  },
+  {
+    id: "economy",
+    name: "Standard / Economy",
+    badge: "90-Day Warranty",
+    warranty: "90-Day Replacement Warranty",
+    multiplier: 0.78,
+    description:
+      "Budget-friendly option ideal for older devices or quick data recovery.",
+    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+];
+
+export type ServiceModeId = "walk-in" | "pickup" | "doorstep";
+
+export interface ServiceModeOption {
+  id: ServiceModeId;
+  label: string;
+  sublabel: string;
+  feeLkr: number;
+}
+
+export const SERVICE_MODES: ServiceModeOption[] = [
+  {
+    id: "walk-in",
+    label: "Walk-In (Colombo Lab)",
+    sublabel: "Drop off at Bambalapitiya • 30-min express wait",
+    feeLkr: 0,
+  },
+  {
+    id: "pickup",
+    label: "Home / Office Pickup & Delivery",
+    sublabel: "Insured rider collects & returns same day",
+    feeLkr: 650,
+  },
+  {
+    id: "doorstep",
+    label: "Doorstep Technician Visit",
+    sublabel: "On-site screen/battery repair at your location",
+    feeLkr: 1500,
+  },
+];
+
+export const COLOMBO_POSTAL_ZONES = [
+  "Colombo 01 (Fort)",
+  "Colombo 02 (Slave Island)",
+  "Colombo 03 (Kollupitiya)",
+  "Colombo 04 (Bambalapitiya)",
+  "Colombo 05 (Havelock / Kirulapone)",
+  "Colombo 06 (Wellawatte)",
+  "Colombo 07 (Cinnamon Gardens)",
+  "Colombo 08 (Borella)",
+  "Colombo 09 (Dematagoda)",
+  "Colombo 10 (Maradana)",
+  "Colombo 11 (Pettah)",
+  "Colombo 12 (Hulftsdorp)",
+  "Colombo 13 (Kotahena)",
+  "Colombo 14 (Grandpass)",
+  "Colombo 15 (Mutwal)",
+  "Dehiwala",
+  "Mount Lavinia",
+  "Nugegoda",
+  "Maharagama",
+  "Rajagiriya",
+  "Battaramulla",
+  "Wattala",
+  "Moratuwa",
+];
+
+export const SLOT_STATUS: Record<
+  string,
+  { label: string; available: boolean; urgent?: boolean }
+> = {
+  "09:30 AM": { label: "Available", available: true },
+  "11:00 AM": { label: "2 left", available: true, urgent: true },
+  "12:30 PM": { label: "Available", available: true },
+  "02:00 PM": { label: "1 left", available: true, urgent: true },
+  "03:30 PM": { label: "Available", available: true },
+  "05:00 PM": { label: "Available", available: true },
+  "06:30 PM": { label: "1 left", available: true, urgent: true },
+};
+
+const SPECIAL_ORDER_BRANDS = new Set(["zte", "umidigi", "tcl", "motorola"]);
+
+export function getPartsAvailability(
+  brandId: string,
+  tierId: PartTierOption["id"]
+): {
+  status: "In Stock" | "Limited Stock" | "Special Order (24h)";
+  badgeClass: string;
+  note: string;
+} {
+  if (SPECIAL_ORDER_BRANDS.has(brandId) && tierId === "original") {
+    return {
+      status: "Special Order (24h)",
+      badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
+      note: "Part requires 24h express sourcing from our Colombo warehouse before repair.",
+    };
+  }
+  if (SPECIAL_ORDER_BRANDS.has(brandId)) {
+    return {
+      status: "Limited Stock",
+      badgeClass: "border-sky-200 bg-sky-50 text-[#1D8FE1]",
+      note: "Available in limited quantities — booking reserves the part for your slot.",
+    };
+  }
+  return {
+    status: "In Stock",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    note: "Ready at our Colombo repair lab for same-day 30–45 min service.",
+  };
+}
+
+export function generateTicketCode(): string {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `REP-${num}`;
+}
+
 export const REPAIR_SERVICES: RepairService[] = [
   {
     id: "screen-replacement",
