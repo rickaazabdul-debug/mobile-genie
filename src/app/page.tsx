@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import {
   Smartphone,
@@ -23,6 +24,12 @@ import { AuthModal } from "@/components/AuthModal";
 import { CartDrawer, type CartEntry } from "@/components/CartDrawer";
 import { MyBookingsModal } from "@/components/MyBookingsModal";
 import { RepairBookingSection } from "@/components/RepairBookingSection";
+import { SiteFooter } from "@/components/SiteFooter";
+import {
+  BRAND_SEO_PAGES,
+  LOCATION_SEO_PAGES,
+  SERVICE_SEO_PAGES,
+} from "@/data/seo";
 import {
   PRODUCTS,
   REPAIR_SERVICES,
@@ -124,19 +131,20 @@ export default function HomePage() {
 
             <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-xs font-bold text-[#1D8FE1]">
               <Zap className="h-3.5 w-3.5 text-[#E31E24]" />
-              17+ Brands Supported • Same-Day Express Repair
+              Mobile Repair Center Colombo • Same-Day Phone Repair Sri Lanka
             </span>
 
             <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-              Time Matters —{" "}
+              Mobile Phone Repair Sri Lanka —{" "}
               <span className="text-[#E31E24]">Fix it Fast,</span>{" "}
               <span className="text-[#1D8FE1]">Fix it Right!</span>
             </h1>
 
             <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-              Select your smartphone brand, pick the repair issue, and book an
-              express appointment in under 60 seconds. Genuine parts, certified
-              technicians, and lifetime screen warranty.
+              Looking for the best mobile repair shop in Colombo or a trusted
+              phone repair shop near you? Select your smartphone brand, pick the
+              repair issue, and book same-day express service with genuine
+              mobile phone spare parts in Sri Lanka.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -370,24 +378,95 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-500 sm:flex-row sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/mobile-genie-logo.png"
-              alt="Mobile Genie"
-              width={132}
-              height={48}
-              className="h-9 w-auto object-contain"
-            />
-            <span className="text-slate-600">
-              • Time Matters — Fix it fast, Fix it Right!
-            </span>
+      {/* SEO Directory: Dedicated Brand, Service & Sri Lanka Location Pages */}
+      <section className="border-t border-slate-200 bg-white py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#E31E24]">
+                Dedicated Repair Pages &amp; LKR Price Guides
+              </span>
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                Express Smartphone Repair Service Across Sri Lanka
+              </h2>
+            </div>
+            <Link
+              href="/guides"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1D8FE1] hover:underline"
+            >
+              Open LKR Price Estimator &amp; FAQ
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <p>Mobile Genie © 2026 • Express Repair &amp; Certified Devices</p>
+
+          <div className="mt-8 grid gap-6 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
+                Brand Repair Pages
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {BRAND_SEO_PAGES.slice(0, 8).map((b) => (
+                  <Link
+                    key={b.slug}
+                    href={`/brands/${b.slug}`}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-[#E31E24] hover:text-[#E31E24]"
+                  >
+                    {b.brandName} Repair
+                  </Link>
+                ))}
+                <Link
+                  href="/brands"
+                  className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#E31E24]"
+                >
+                  All 16+ Brands →
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
+                Hardware &amp; IC Services
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {SERVICE_SEO_PAGES.map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/services/${s.slug}`}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-[#1D8FE1] hover:text-[#1D8FE1]"
+                  >
+                    {s.categoryLabel}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
+                Colombo &amp; Island-Wide Pickup
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {LOCATION_SEO_PAGES.slice(0, 9).map((loc) => (
+                  <Link
+                    key={loc.slug}
+                    href={`/locations/${loc.slug}`}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:border-[#E31E24] hover:text-[#E31E24]"
+                  >
+                    {loc.name.split(" (")[0]}
+                  </Link>
+                ))}
+                <Link
+                  href="/locations"
+                  className="rounded-lg bg-[#1D8FE1] px-2.5 py-1 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  All 21 Areas →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      </footer>
+      </section>
+
+      <SiteFooter />
 
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
       <CartDrawer

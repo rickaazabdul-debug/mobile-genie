@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import Image from "next/image";
 import {
   ShoppingBag,
@@ -40,22 +41,37 @@ export function Navbar({
           />
         </a>
 
-        <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-700 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
           <a
             href="#book-repair"
             className="transition-colors hover:text-[#E31E24]"
           >
             Book Appointment
           </a>
-          <a
-            href="#services"
+          <Link
+            href="/brands"
             className="transition-colors hover:text-[#E31E24]"
           >
-            Repair Issues
-          </a>
-          <a href="#shop" className="transition-colors hover:text-[#E31E24]">
-            Phones &amp; Gear
-          </a>
+            Brands
+          </Link>
+          <Link
+            href="/services"
+            className="transition-colors hover:text-[#E31E24]"
+          >
+            Services
+          </Link>
+          <Link
+            href="/locations"
+            className="transition-colors hover:text-[#E31E24]"
+          >
+            Colombo &amp; LK
+          </Link>
+          <Link
+            href="/guides"
+            className="transition-colors hover:text-[#E31E24]"
+          >
+            Price Guide
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2.5">
