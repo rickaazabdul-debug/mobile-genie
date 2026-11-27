@@ -41,6 +41,7 @@ import {
   type PhoneBrand,
   type ServiceModeId,
 } from "@/data/catalog";
+import { useLiveRepairServices } from "@/lib/useLiveCatalog";
 
 interface RepairBookingSectionProps {
   selectedServiceTitle: string;
@@ -88,7 +89,8 @@ export function RepairBookingSection({
 
   const resolvedName = customerName ?? user?.displayName ?? "";
   const resolvedEmail = email ?? user?.email ?? "";
-  const serviceType = selectedServiceTitle || REPAIR_SERVICES[0].title;
+  const liveServices = useLiveRepairServices();
+  const serviceType = selectedServiceTitle || liveServices[0].title;
 
   const filteredBrands = useMemo(() => {
     const q = brandSearch.trim().toLowerCase();
@@ -101,7 +103,7 @@ export function RepairBookingSection({
   }, [brandSearch]);
 
   const activeService =
-    REPAIR_SERVICES.find((s) => s.title === serviceType) || REPAIR_SERVICES[0];
+    liveServices.find((s) => s.title === serviceType) || liveServices[0];
   const activeMode =
     SERVICE_MODES.find((m) => m.id === serviceMode) || SERVICE_MODES[0];
 
@@ -527,7 +529,7 @@ export function RepairBookingSection({
                 Click a Repair Issue to Continue
               </p>
               <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {REPAIR_SERVICES.map((service) => {
+                {liveServices.map((service) => {
                   const isSelected = serviceType === service.title;
                   return (
                     <button

@@ -24,13 +24,19 @@ export interface ProductItem {
   id: string;
   name: string;
   brand: string;
-  category: "Smartphones" | "Accessories";
-  condition: "New" | "Certified Refurbished" | "Accessory";
+  category: "Phone Parts" | "Smartphones" | "Accessories";
+  condition:
+    | "Genuine Part"
+    | "OEM Part"
+    | "New"
+    | "Certified Refurbished"
+    | "Accessory";
   price: number;
   originalPrice?: number;
   specs: string;
   rating: number;
   badgeColor: string;
+  inStock?: boolean;
 }
 
 export function formatLkr(amount: number): string {

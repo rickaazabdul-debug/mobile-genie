@@ -3,11 +3,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -22,11 +26,24 @@ import {
   Clock,
   LogIn,
   Lock,
+  Plus,
+  Trash2,
+  Save,
+  Cpu,
+  DollarSign,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
-import { formatLkr } from "@/data/catalog";
+import {
+  PHONE_BRANDS,
+  formatLkr,
+  type ProductItem,
+} from "@/data/catalog";
+import {
+  useLiveRepairServices,
+  useLiveStoreProducts,
+} from "@/lib/useLiveCatalog";
 
 const ADMIN_EMAILS = new Set([
   "rickaazabdul@gmail.com",
@@ -83,16 +100,41 @@ interface AdminOrder {
 export function AdminDashboardClient() {
   const { user, loading: authLoading } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"repairs" | "orders">("repairs");
+  const [activeTab, setActiveTab] = useState<
+    "repairs" | "orders" | "parts" | "prices"
+  >("repairs");
 
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Live repair services & e-commerce parts
+  const liveServices = useLiveRepairServices();
+  const { customProducts } = useLiveStoreProducts();
+
+  // New Phone Part / Product form state
+  const [partName, setPartName] = useState("");
+  const [partBrand, setPartBrand] = useState(PHONE_BRANDS[1].name); // Apple
+  const [partCategory, setPartCategory] =
+    useState<ProductItem["category"]>("Phone Parts");
+  const [partCondition, setPartCondition] =
+    useState<ProductItem["condition"]>("Genuine Part");
+  const [partPrice, setPartPrice] = useState("");
+  const [partOriginalPrice, setPartOriginalPrice] = useState("");
+  const [partSpecs, setPartSpecs] = useState("");
+  const [addingPart, setAddingPart] = useState(false);
+
+  // Editable repair prices state
+  const [priceEdits, setPriceEdits] = useState<
+    Record<string, { startingPrice: string; turnaround: string; warranty: string }>
+  >({});
+  const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
 
   const isAdmin = Boolean(
     user?.email && ADMIN_EMAILS.has(user.email.toLowerCase())
@@ -180,14 +222,20 @@ export function AdminDashboardClient() {
       activeCount,
       readyCount,
       pipelineLkr,
-      ordersCount: orders.length,
+      partsCount: customProducts.length,
     };
-  }, [tickets, orders]);
+  }, [tickets, customProducts]);
+
+  const flashNotice = (msg: string) => {
+    setSuccessNotice(msg);
+    setTimeout(() => setSuccessNotice(null), 3500);
+  };
 
   const handleUpdateTicketStatus = async (id: string, nextStatus: string) => {
     setUpdatingId(id);
     try {
       await updateDoc(doc(db, "repair_bookings", id), { status: nextStatus });
+      flashNotice(`Updated ticket status to "${nextStatus}".`);
     } catch (err) {
       setFirestoreError(
         err instanceof Error ? err.message : "Failed to update ticket status."
@@ -201,12 +249,111 @@ export function AdminDashboardClient() {
     setUpdatingId(id);
     try {
       await updateDoc(doc(db, "orders", id), { status: nextStatus });
+      flashNotice(`Updated order status to "${nextStatus}".`);
     } catch (err) {
       setFirestoreError(
         err instanceof Error ? err.message : "Failed to update order status."
       );
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleAddPart = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFirestoreError(null);
+    const numericPrice = Number(partPrice);
+    if (!partName.trim() || !numericPrice || numericPrice <= 0) {
+      setFirestoreError("Please enter a valid part name and LKR price.");
+      return;
+    }
+
+    setAddingPart(true);
+    try {
+      const badgeColor =
+        partCategory === "Phone Parts"
+          ? "bg-red-50 text-[#E31E24] border-red-200"
+          : partCategory === "Smartphones"
+          ? "bg-sky-50 text-[#1D8FE1] border-sky-200"
+          : "bg-amber-50 text-amber-700 border-amber-200";
+
+      const newProduct: Record<string, unknown> = {
+        name: partName.trim(),
+        brand: partBrand,
+        category: partCategory,
+        condition: partCondition,
+        price: numericPrice,
+        specs: partSpecs.trim() || `${partBrand} • In Stock for Online Order`,
+        rating: 4.9,
+        badgeColor,
+        inStock: true,
+        createdAt: serverTimestamp(),
+      };
+
+      const orig = Number(partOriginalPrice);
+      if (orig > numericPrice) {
+        newProduct.originalPrice = orig;
+      }
+
+      await addDoc(collection(db, "store_products"), newProduct);
+      setPartName("");
+      setPartPrice("");
+      setPartOriginalPrice("");
+      setPartSpecs("");
+      flashNotice("New phone part added to the live storefront!");
+    } catch (err) {
+      setFirestoreError(
+        err instanceof Error ? err.message : "Failed to add phone part."
+      );
+    } finally {
+      setAddingPart(false);
+    }
+  };
+
+  const handleDeletePart = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "store_products", id));
+      flashNotice("Part removed from storefront.");
+    } catch (err) {
+      setFirestoreError(
+        err instanceof Error ? err.message : "Failed to remove part."
+      );
+    }
+  };
+
+  const handleSaveServicePrice = async (
+    serviceId: string,
+    fallbackPrice: number,
+    fallbackTurnaround: string,
+    fallbackWarranty: string
+  ) => {
+    const edited = priceEdits[serviceId];
+    const nextPrice = Number(edited?.startingPrice ?? fallbackPrice);
+    if (!nextPrice || nextPrice <= 0) {
+      setFirestoreError("Please enter a valid LKR starting price.");
+      return;
+    }
+
+    setSavingServiceId(serviceId);
+    setFirestoreError(null);
+    try {
+      await setDoc(
+        doc(db, "repair_services", serviceId),
+        {
+          startingPrice: nextPrice,
+          turnaround: (edited?.turnaround ?? fallbackTurnaround).trim(),
+          warranty: (edited?.warranty ?? fallbackWarranty).trim(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      flashNotice("Repair service price updated live!");
+    } catch (err) {
+      setFirestoreError(
+        err instanceof Error ? err.message : "Failed to save repair price."
+      );
+    } finally {
+      setSavingServiceId(null);
     }
   };
 
@@ -238,7 +385,7 @@ export function AdminDashboardClient() {
             <code className="font-mono text-xs font-bold">
               acmrickaaz@gmail.com
             </code>
-            ) to manage repair tickets and store orders.
+            ) to manage repair tickets, phone parts, and repair prices.
           </p>
           <button
             onClick={() => setAuthOpen(true)}
@@ -296,10 +443,10 @@ export function AdminDashboardClient() {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <span className="text-xs font-semibold text-slate-500">
-            Ready for Pickup
+            Custom Parts Listed
           </span>
           <p className="mt-1 text-3xl font-extrabold text-emerald-600">
-            {stats.readyCount}
+            {stats.partsCount}
           </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
@@ -312,6 +459,13 @@ export function AdminDashboardClient() {
         </div>
       </div>
 
+      {successNotice && (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          {successNotice}
+        </div>
+      )}
+
       {firestoreError && (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-medium text-amber-900">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
@@ -319,17 +473,16 @@ export function AdminDashboardClient() {
             <p className="font-bold">Firestore Notice: {firestoreError}</p>
             <p className="mt-0.5">
               Make sure you have published the updated{" "}
-              <code>firestore.rules</code> in your Firebase Console so admin
-              accounts can list and update all tickets.
+              <code>firestore.rules</code> in your Firebase Console.
             </p>
           </div>
         </div>
       )}
 
-      {/* Tabs + Filters */}
+      {/* Tabs + Content */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center">
-          <div className="flex gap-2">
+        <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab("repairs")}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
@@ -340,6 +493,28 @@ export function AdminDashboardClient() {
             >
               <Wrench className="h-4 w-4" />
               Repair Tickets ({tickets.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("parts")}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
+                activeTab === "parts"
+                  ? "bg-[#E31E24] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <Cpu className="h-4 w-4" />
+              Add Phone Parts ({customProducts.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("prices")}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
+                activeTab === "prices"
+                  ? "bg-[#1D8FE1] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <DollarSign className="h-4 w-4" />
+              Repair Service Prices
             </button>
             <button
               onClick={() => setActiveTab("orders")}
@@ -382,13 +557,14 @@ export function AdminDashboardClient() {
           )}
         </div>
 
-        {loadingData ? (
-          <div className="flex items-center justify-center py-12 text-sm text-slate-500">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#E31E24]" />
-            Loading live Firestore records...
-          </div>
-        ) : activeTab === "repairs" ? (
-          filteredTickets.length === 0 ? (
+        {/* TAB 1: REPAIR TICKETS */}
+        {activeTab === "repairs" &&
+          (loadingData ? (
+            <div className="flex items-center justify-center py-12 text-sm text-slate-500">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#E31E24]" />
+              Loading live Firestore records...
+            </div>
+          ) : filteredTickets.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-500">
               No repair tickets match your current filter.
             </div>
@@ -401,7 +577,7 @@ export function AdminDashboardClient() {
                 >
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-lg bg-white px-2.5 py-1 font-mono text-xs font-extrabold text-[#E31E24] border border-slate-200">
+                      <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs font-extrabold text-[#E31E24]">
                         {t.ticketCode || t.id.slice(0, 8)}
                       </span>
                       <span className="text-sm font-extrabold text-slate-900">
@@ -476,53 +652,362 @@ export function AdminDashboardClient() {
                 </div>
               ))}
             </div>
-          )
-        ) : orders.length === 0 ? (
-          <div className="py-12 text-center text-sm text-slate-500">
-            No store orders placed yet.
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3">
-            {orders.map((o) => (
-              <div
-                key={o.id}
-                className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center"
-              >
+          ))}
+
+        {/* TAB 2: ADD PHONE PARTS FOR E-COMMERCE */}
+        {activeTab === "parts" && (
+          <div className="mt-6 grid gap-8 lg:grid-cols-5">
+            <form
+              onSubmit={handleAddPart}
+              className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 lg:col-span-2"
+            >
+              <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+                <Plus className="h-4 w-4 text-[#E31E24]" />
+                Add New Phone Part / Product
+              </h3>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Part / Product Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partName}
+                  onChange={(e) => setPartName(e.target.value)}
+                  placeholder="e.g. iPhone 15 Pro OLED Display Assembly"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-sm font-extrabold text-slate-900">
-                    {o.items
-                      ?.map((i) => `${i.quantity}× ${i.name}`)
-                      .join(", ")}
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-600">
-                    Order #{o.id.slice(0, 8)} •{" "}
-                    {o.customerEmail || o.customerName} •{" "}
-                    <strong className="text-[#E31E24]">
-                      {formatLkr(o.totalAmount)}
-                    </strong>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Brand
+                  </label>
                   <select
-                    value={o.status}
-                    disabled={updatingId === o.id}
-                    onChange={(e) =>
-                      handleUpdateOrderStatus(o.id, e.target.value)
-                    }
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-[#1D8FE1] focus:outline-none disabled:opacity-60"
+                    value={partBrand}
+                    onChange={(e) => setPartBrand(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#E31E24] focus:outline-none"
                   >
-                    {ORDER_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
+                    {PHONE_BRANDS.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
                       </option>
                     ))}
+                    <option value="Mobile Genie">Mobile Genie</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Category
+                  </label>
+                  <select
+                    value={partCategory}
+                    onChange={(e) =>
+                      setPartCategory(e.target.value as ProductItem["category"])
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                  >
+                    <option value="Phone Parts">Phone Parts</option>
+                    <option value="Smartphones">Smartphones</option>
+                    <option value="Accessories">Accessories</option>
                   </select>
                 </div>
               </div>
-            ))}
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Condition / Tier
+                  </label>
+                  <select
+                    value={partCondition}
+                    onChange={(e) =>
+                      setPartCondition(
+                        e.target.value as ProductItem["condition"]
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                  >
+                    <option value="Genuine Part">Genuine Part</option>
+                    <option value="OEM Part">OEM Part</option>
+                    <option value="New">New</option>
+                    <option value="Certified Refurbished">
+                      Certified Refurbished
+                    </option>
+                    <option value="Accessory">Accessory</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Price (LKR) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={100}
+                    value={partPrice}
+                    onChange={(e) => setPartPrice(e.target.value)}
+                    placeholder="28500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Old Price (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min={100}
+                    value={partOriginalPrice}
+                    onChange={(e) => setPartOriginalPrice(e.target.value)}
+                    placeholder="34000"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Specs / Compatibility
+                </label>
+                <input
+                  type="text"
+                  value={partSpecs}
+                  onChange={(e) => setPartSpecs(e.target.value)}
+                  placeholder="120Hz ProMotion • Original Pulled • 6-Mo Warranty"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#E31E24] focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={addingPart}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E31E24] py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#c8181e] disabled:opacity-60"
+              >
+                {addingPart ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Publish Part to Online Store
+              </button>
+            </form>
+
+            <div className="space-y-3 lg:col-span-3">
+              <h3 className="text-base font-extrabold text-slate-900">
+                Live Custom Parts &amp; Products ({customProducts.length})
+              </h3>
+              {customProducts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-500">
+                  No custom parts added yet. Use the form on the left to add
+                  spare parts (screens, batteries, charging boards) so customers
+                  can order them online.
+                </div>
+              ) : (
+                customProducts.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-extrabold text-slate-900">
+                          {item.name}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${item.badgeColor}`}
+                        >
+                          {item.condition}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {item.brand} • {item.category} • {item.specs}
+                      </p>
+                      <p className="mt-1 text-sm font-extrabold text-[#E31E24]">
+                        {formatLkr(item.price)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePart(item.id)}
+                      className="rounded-xl border border-red-200 bg-white p-2 text-[#E31E24] transition hover:bg-red-50"
+                      title="Delete part"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
+
+        {/* TAB 3: EDIT REPAIR SERVICE PRICES */}
+        {activeTab === "prices" && (
+          <div className="mt-6 space-y-4">
+            <p className="text-xs text-slate-600">
+              Update any repair service starting price (LKR), turnaround time,
+              or warranty below. Changes sync immediately to the homepage and
+              4-step booking wizard.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {liveServices.map((svc) => {
+                const edit = priceEdits[svc.id];
+                const priceVal =
+                  edit?.startingPrice ?? String(svc.startingPrice);
+                const turnaroundVal = edit?.turnaround ?? svc.turnaround;
+                const warrantyVal = edit?.warranty ?? svc.warranty;
+
+                return (
+                  <div
+                    key={svc.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                  >
+                    <h4 className="text-sm font-extrabold text-slate-900">
+                      {svc.title}
+                    </h4>
+                    <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-slate-600">
+                          Price (LKR)
+                        </label>
+                        <input
+                          type="number"
+                          min={500}
+                          value={priceVal}
+                          onChange={(e) =>
+                            setPriceEdits((prev) => ({
+                              ...prev,
+                              [svc.id]: {
+                                startingPrice: e.target.value,
+                                turnaround: turnaroundVal,
+                                warranty: warrantyVal,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-[#1D8FE1] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-slate-600">
+                          Turnaround
+                        </label>
+                        <input
+                          type="text"
+                          value={turnaroundVal}
+                          onChange={(e) =>
+                            setPriceEdits((prev) => ({
+                              ...prev,
+                              [svc.id]: {
+                                startingPrice: priceVal,
+                                turnaround: e.target.value,
+                                warranty: warrantyVal,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#1D8FE1] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-slate-600">
+                          Warranty
+                        </label>
+                        <input
+                          type="text"
+                          value={warrantyVal}
+                          onChange={(e) =>
+                            setPriceEdits((prev) => ({
+                              ...prev,
+                              [svc.id]: {
+                                startingPrice: priceVal,
+                                turnaround: turnaroundVal,
+                                warranty: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#1D8FE1] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={savingServiceId === svc.id}
+                        onClick={() =>
+                          handleSaveServicePrice(
+                            svc.id,
+                            svc.startingPrice,
+                            svc.turnaround,
+                            svc.warranty
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#1D8FE1] px-4 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+                      >
+                        {savingServiceId === svc.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
+                        Save Price
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: STORE ORDERS */}
+        {activeTab === "orders" &&
+          (orders.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-500">
+              No store orders placed yet.
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              {orders.map((o) => (
+                <div
+                  key={o.id}
+                  className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center"
+                >
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">
+                      {o.items
+                        ?.map((i) => `${i.quantity}× ${i.name}`)
+                        .join(", ")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-600">
+                      Order #{o.id.slice(0, 8)} •{" "}
+                      {o.customerEmail || o.customerName} •{" "}
+                      <strong className="text-[#E31E24]">
+                        {formatLkr(o.totalAmount)}
+                      </strong>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <select
+                      value={o.status}
+                      disabled={updatingId === o.id}
+                      onChange={(e) =>
+                        handleUpdateOrderStatus(o.id, e.target.value)
+                      }
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-[#1D8FE1] focus:outline-none disabled:opacity-60"
+                    >
+                      {ORDER_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
       </div>
     </div>
   );

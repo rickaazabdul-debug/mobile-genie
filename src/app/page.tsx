@@ -31,12 +31,15 @@ import {
   SERVICE_SEO_PAGES,
 } from "@/data/seo";
 import {
-  PRODUCTS,
   REPAIR_SERVICES,
   formatLkr,
   type ProductItem,
   type RepairService,
 } from "@/data/catalog";
+import {
+  useLiveRepairServices,
+  useLiveStoreProducts,
+} from "@/lib/useLiveCatalog";
 
 function ServiceIcon({ name }: { name: RepairService["iconName"] }) {
   switch (name) {
@@ -62,14 +65,17 @@ export default function HomePage() {
   const [selectedService, setSelectedService] = useState(
     REPAIR_SERVICES[0].title
   );
-  const [category, setCategory] = useState<"All" | "Smartphones" | "Accessories">(
-    "All"
-  );
+  const [category, setCategory] = useState<
+    "All" | "Phone Parts" | "Smartphones" | "Accessories"
+  >("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartEntry[]>([]);
 
+  const liveServices = useLiveRepairServices();
+  const { allProducts } = useLiveStoreProducts();
+
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((p) => {
+    return allProducts.filter((p) => {
       const matchesCategory = category === "All" || p.category === category;
       const q = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -79,7 +85,7 @@ export default function HomePage() {
         p.specs.toLowerCase().includes(q);
       return matchesCategory && matchesSearch;
     });
-  }, [category, searchQuery]);
+  }, [allProducts, category, searchQuery]);
 
   const handleAddToCart = (product: ProductItem) => {
     setCart((prev) => {
@@ -218,7 +224,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {REPAIR_SERVICES.map((service) => (
+            {liveServices.map((service) => (
               <div
                 key={service.id}
                 className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition hover:border-[#E31E24]/50 hover:bg-white hover:shadow-md"
@@ -302,8 +308,10 @@ export default function HomePage() {
                   className="w-56 rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#E31E24] focus:outline-none"
                 />
               </div>
-              <div className="flex rounded-xl border border-slate-200 bg-white p-1">
-                {(["All", "Smartphones", "Accessories"] as const).map((tab) => (
+              <div className="flex flex-wrap rounded-xl border border-slate-200 bg-white p-1">
+                {(
+                  ["All", "Phone Parts", "Smartphones", "Accessories"] as const
+                ).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setCategory(tab)}
