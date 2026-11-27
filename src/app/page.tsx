@@ -347,6 +347,15 @@ export default function HomePage() {
                     </span>
                   </div>
 
+                  {product.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="mt-3 h-36 w-full rounded-xl border border-slate-100 object-cover"
+                    />
+                  )}
+
                   <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
                     {product.brand}
                   </p>

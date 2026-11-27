@@ -36,6 +36,7 @@ export interface ProductItem {
   specs: string;
   rating: number;
   badgeColor: string;
+  imageUrl?: string;
   inStock?: boolean;
 }
 

@@ -31,6 +31,7 @@ import {
   Save,
   Cpu,
   DollarSign,
+  Upload,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -128,6 +129,8 @@ export function AdminDashboardClient() {
   const [partPrice, setPartPrice] = useState("");
   const [partOriginalPrice, setPartOriginalPrice] = useState("");
   const [partSpecs, setPartSpecs] = useState("");
+  const [partImageUrl, setPartImageUrl] = useState<string | null>(null);
+  const [uploadingPartImage, setUploadingPartImage] = useState(false);
   const [addingPart, setAddingPart] = useState(false);
 
   // Editable repair prices state
@@ -259,6 +262,32 @@ export function AdminDashboardClient() {
     }
   };
 
+  const handlePartImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFirestoreError(null);
+    setUploadingPartImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload-product-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Image upload failed.");
+      setPartImageUrl(data.url);
+    } catch (err) {
+      setFirestoreError(
+        err instanceof Error ? err.message : "Failed to upload item image."
+      );
+    } finally {
+      setUploadingPartImage(false);
+    }
+  };
+
   const handleAddPart = async (e: React.FormEvent) => {
     e.preventDefault();
     setFirestoreError(null);
@@ -294,12 +323,16 @@ export function AdminDashboardClient() {
       if (orig > numericPrice) {
         newProduct.originalPrice = orig;
       }
+      if (partImageUrl) {
+        newProduct.imageUrl = partImageUrl;
+      }
 
       await addDoc(collection(db, "store_products"), newProduct);
       setPartName("");
       setPartPrice("");
       setPartOriginalPrice("");
       setPartSpecs("");
+      setPartImageUrl(null);
       flashNotice("New phone part added to the live storefront!");
     } catch (err) {
       setFirestoreError(
@@ -781,6 +814,41 @@ export function AdminDashboardClient() {
                 />
               </div>
 
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Item Image (Stored in Vercel Blob)
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 transition hover:border-[#1D8FE1] hover:text-[#1D8FE1]">
+                    {uploadingPartImage ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5" />
+                        {partImageUrl ? "Change Image" : "Upload Image"}
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePartImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {partImageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={partImageUrl}
+                      alt="Uploaded part preview"
+                      className="h-11 w-11 rounded-lg border border-slate-200 object-cover"
+                    />
+                  )}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={addingPart}
@@ -811,7 +879,16 @@ export function AdminDashboardClient() {
                     key={item.id}
                     className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
                   >
-                    <div>
+                    <div className="flex items-center gap-3">
+                      {item.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="h-14 w-14 shrink-0 rounded-xl border border-slate-200 object-cover"
+                        />
+                      )}
+                      <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-extrabold text-slate-900">
                           {item.name}
@@ -828,6 +905,7 @@ export function AdminDashboardClient() {
                       <p className="mt-1 text-sm font-extrabold text-[#E31E24]">
                         {formatLkr(item.price)}
                       </p>
+                    </div>
                     </div>
                     <button
                       type="button"
