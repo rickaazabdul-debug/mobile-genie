@@ -115,73 +115,69 @@ export default function HomePage() {
       />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-sky-100/70 via-white to-red-50/50" />
-        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 flex justify-center">
-              <Image
-                src="/mobile-genie-logo.png"
-                alt="Mobile Genie"
-                width={320}
-                height={116}
-                priority
-                className="h-24 w-auto object-contain sm:h-28"
-              />
-            </div>
+      <section className="relative overflow-hidden border-b border-slate-200 bg-[#061838]">
+        <Image
+          src="/hero-repair.jpg"
+          alt="Mobile Genie technician repairing smartphone in Colombo lab"
+          fill
+          priority
+          className="object-cover object-right opacity-90 sm:opacity-100"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#04122b]/95 via-[#061838]/80 to-[#061838]/20 lg:via-[#061838]/65 lg:to-transparent" />
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-xs font-bold text-[#1D8FE1]">
+        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/15 px-3.5 py-1.5 text-xs font-bold text-sky-200 backdrop-blur-sm">
               <Zap className="h-3.5 w-3.5 text-[#E31E24]" />
-              Mobile Repair Center Colombo • Same-Day Phone Repair Sri Lanka
+              Mobile Repair Center Colombo • Same-Day Sri Lanka
             </span>
 
-            <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+            <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
               Mobile Phone Repair Sri Lanka —{" "}
-              <span className="text-[#E31E24]">Fix it Fast,</span>{" "}
-              <span className="text-[#1D8FE1]">Fix it Right!</span>
+              <span className="text-[#ff4d52]">Fix it Fast,</span>{" "}
+              <span className="text-[#38bdf8]">Fix it Right!</span>
             </h1>
 
-            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-              Looking for the best mobile repair shop in Colombo or a trusted
-              phone repair shop near you? Select your smartphone brand, pick the
-              repair issue, and book same-day express service with genuine
-              mobile phone spare parts in Sri Lanka.
+            <p className="mt-4 text-sm leading-relaxed text-slate-200 sm:text-base">
+              Looking for the best mobile repair shop in Colombo? Select your
+              smartphone brand, pick your repair issue &amp; part tier, and book
+              same-day walk-in or doorstep service with genuine spare parts.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <a
                 href="#book-repair"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-500/25 transition hover:bg-[#c8181e]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/30 transition hover:bg-[#c8181e]"
               >
                 <Wrench className="h-4 w-4" />
                 Select Brand &amp; Book Repair
                 <ArrowRight className="h-4 w-4" />
               </a>
-              <a
-                href="#services"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+              <Link
+                href="/track"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
               >
-                <Clock className="h-4 w-4 text-[#1D8FE1]" />
-                View Repair Prices
-              </a>
+                <Clock className="h-4 w-4 text-sky-300" />
+                Track Ticket
+              </Link>
             </div>
           </div>
 
-          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:mt-14 sm:grid-cols-4 sm:gap-4">
             {[
-              { label: "Devices Repaired", value: "15,000+", color: "text-[#E31E24]" },
-              { label: "Avg. Turnaround", value: "30 Mins", color: "text-[#1D8FE1]" },
-              { label: "Screen Warranty", value: "Lifetime", color: "text-slate-900" },
-              { label: "Customer Rating", value: "4.9 ★", color: "text-amber-500" },
+              { label: "Devices Repaired", value: "15,000+", color: "text-[#ff4d52]" },
+              { label: "Avg. Turnaround", value: "30 Mins", color: "text-sky-300" },
+              { label: "Screen Warranty", value: "Lifetime", color: "text-white" },
+              { label: "Customer Rating", value: "4.9 ★", color: "text-amber-300" },
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm"
+                className="rounded-2xl border border-white/15 bg-slate-950/65 p-4 text-center backdrop-blur-md"
               >
-                <p className={`text-2xl font-extrabold ${stat.color}`}>
+                <p className={`text-xl font-extrabold sm:text-2xl ${stat.color}`}>
                   {stat.value}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
+                <p className="mt-1 text-[11px] font-semibold text-slate-300 sm:text-xs">
                   {stat.label}
                 </p>
               </div>
